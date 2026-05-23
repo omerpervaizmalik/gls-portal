@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+.next/
+out/
+dist/
+build/
+
+# Env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database
+prisma/dev.db
+prisma/dev.db-journal
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# IRIS session - contains auth tokens, never commit!
+scripts/iris_session.json
+iris_error.png
+iris_after_login.png
+iris_dashboard.png
+iris_sync_error.png
+
+# Vercel
+.vercel
+
+# ⚠️  SENSITIVE - Client legal documents, tax returns, financial data
+storage/
+
+# Non-essential directories - do not deploy
+nf/
+scratch/
+android/
+ccmp/
+.planning/
+
+# Build logs and temp files
+build_log.txt
+tsconfig.tsbuildinfo
+*.ps1
+
+# Mobile build scripts
+mobile-build*.ps1

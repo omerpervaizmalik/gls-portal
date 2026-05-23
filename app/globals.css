@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 222 47% 11%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 221 83% 53%;
+    --accent-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 222 47% 11%;
+  }
+}
+
+body {
+  background-color: #0a0f1e;
+  color: hsl(var(--foreground));
+  font-family: 'Inter', sans-serif;
+}
+
+/* Mobile App Specific Overrides */
+body.mobile-app {
+  /* Dynamic padding handled by layout */
+}
+
+/* body.mobile-app header {
+  display: none !important;
+} */
+
+body.mobile-app .lg\:hidden.fixed.top-4.left-4 {
+  display: none !important; /* Hide Sidebar Toggle */
+}
+
+body.mobile-app main {
+  padding-top: 0 !important;
+  height: 100vh !important;
+}
+
+.glass-card {
+  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+}
+
+.corporate-gradient {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}

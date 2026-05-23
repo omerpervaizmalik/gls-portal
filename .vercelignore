@@ -1,0 +1,9 @@
+storage/
+scratch/
+ccmp/
+nf/
+.planning/
+scripts/
+android/
+node_modules/
+.next/
