@@ -10,22 +10,28 @@ export async function GET(req: NextRequest) {
   const userId = req.headers.get('x-user-id') || req.nextUrl.searchParams.get('userId');
   const itemPath = req.nextUrl.searchParams.get('path');
 
-  if (!userId || !itemPath) {
+  const isPublicProfile = itemPath?.startsWith('photos/') || itemPath?.startsWith('profiles/');
+
+  if (!isPublicProfile && (!userId || !itemPath)) {
     return NextResponse.json({ error: 'Unauthorized or missing path' }, { status: 401 });
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { permissions: true }
-    });
+    let user = null;
+    if (userId) {
+      user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { permissions: true }
+      });
+    }
 
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!isPublicProfile && !user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     // Check permissions
-    const isTaskAttachment = itemPath.startsWith('TaskAttachments/');
-    const hasPermission = user.role === 'ADMIN' || isTaskAttachment ||
-      user.permissions.some(p => itemPath.includes(p.folderPath) || p.folderPath === '');
+    const isTaskAttachment = itemPath?.startsWith('TaskAttachments/');
+    
+    const hasPermission = isPublicProfile || user?.role === 'ADMIN' || isTaskAttachment ||
+      (user?.permissions && user.permissions.some(p => itemPath?.includes(p.folderPath) || p.folderPath === ''));
 
     if (!hasPermission) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });

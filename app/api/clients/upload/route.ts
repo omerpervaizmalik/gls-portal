@@ -1,34 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { storage } from "@/lib/storage";
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
+    const path = formData.get("path") as string || "profiles";
 
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Create directory if it doesn't exist
-    const uploadDir = join(process.cwd(), "public", "uploads", "profiles");
-    try {
-      await mkdir(uploadDir, { recursive: true });
-    } catch (err) {
-      // Directory already exists
-    }
-
+    const buffer = Buffer.from(await file.arrayBuffer());
     const fileExtension = file.name.split(".").pop();
     const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${fileExtension}`;
-    const filePath = join(uploadDir, fileName);
 
-    await writeFile(filePath, buffer);
+    // Upload via storage abstraction (OneDrive or Local)
+    const result = await storage.uploadFile(path, fileName, buffer);
 
-    const publicUrl = `/uploads/profiles/${fileName}`;
+    // Provide the file URL via storage-gateway
+    const uploadedPath = result?.path || result?.id || `${path}/${fileName}`;
+    const publicUrl = `/api/storage-gateway/download?path=${encodeURIComponent(uploadedPath)}`;
 
     return NextResponse.json({ url: publicUrl });
   } catch (e: any) {
