@@ -1,5 +1,6 @@
 import React from "react";
 import Sidebar from "@/components/Sidebar";
+import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 import { SubmitButton } from "@/components/SubmitButton";
 import { User, Mail, Shield, Save, Camera, Upload, Link as LinkIcon, MapPin, Phone, Briefcase, GraduationCap, Award, BookOpen, Star } from "lucide-react";
 import { getServerSession } from "next-auth/next";
@@ -234,20 +235,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: { id
             
             {/* Header Card */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto md:overflow-x-visible scrollbar-hide flex items-center p-6 md:p-8 space-x-4 md:space-x-6">
-              <div className="relative group shrink-0">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-slate-100 border-4 border-white shadow-xl flex items-center justify-center overflow-hidden">
-                  {p.profilePhoto ? (
-                    <img src={p.profilePhoto} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <Camera className="w-8 h-8 text-slate-300" />
-                  )}
-                </div>
-                <label className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                  <Upload className="w-5 h-5 mb-1" />
-                  <span className="text-[10px] font-bold">Upload</span>
-                  <input type="file" name="profilePhotoFile" accept="image/*" className="hidden" />
-                </label>
-              </div>
+              <ProfilePhotoUpload initialPhoto={p.profilePhoto} />
               <div className="flex-1 min-w-[150px]">
                 <h2 className="text-xl md:text-2xl font-bold text-slate-800 whitespace-nowrap md:whitespace-normal">{user.name || "Complete your profile"}</h2>
                 <p className="text-xs md:text-sm text-slate-500 font-medium whitespace-nowrap md:whitespace-normal">{p.designation || "Add your designation below"}</p>
