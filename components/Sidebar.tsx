@@ -17,7 +17,8 @@ import {
   ClipboardList,
   Menu,
   X,
-  User
+  User,
+  Database
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -155,6 +156,16 @@ export default function Sidebar() {
                     <ShieldCheck className="h-5 w-5 text-amber-500" />
                   </div>
                   <span className="ml-2">Access Management</span>
+                </Link>
+                <Link
+                  href="/admin/backup"
+                  onClick={() => window.innerWidth < 1024 && setIsOpen(false)}
+                  className="group flex items-center px-4 py-3 text-sm font-semibold rounded-xl hover:bg-slate-800/50 hover:text-white transition-all duration-200 border border-transparent hover:border-slate-700/50 mt-1"
+                >
+                  <div className="w-8 flex items-center justify-center">
+                    <Database className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <span className="ml-2">Backup & Restore</span>
                 </Link>
               </div>
             )}
