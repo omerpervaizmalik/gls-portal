@@ -173,8 +173,8 @@ export default function AdminUsers() {
             </div>
           )}
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <table className="w-full text-left">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto md:overflow-x-visible scrollbar-hide">
+            <table className="w-full text-left min-w-[900px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">User</th>
