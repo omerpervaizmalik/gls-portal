@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
     const result = await storage.uploadFile(path, fileName, buffer);
 
     // Provide the file URL via storage-gateway
-    const uploadedPath = result?.path || result?.id || `${path}/${fileName}`;
+    const rawPath = result?.path || result?.id || `${path}/${fileName}`;
+    const uploadedPath = rawPath.replace(/\\/g, '/');
     const publicUrl = `/api/storage-gateway/download?path=${encodeURIComponent(uploadedPath)}`;
 
     return NextResponse.json({ url: publicUrl });

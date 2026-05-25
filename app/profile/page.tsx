@@ -20,7 +20,8 @@ async function saveUploadedFile(file: File | null, folder: string): Promise<stri
   
   try {
     const result = await storage.uploadFile(folder, fileName, buffer);
-    const uploadedPath = result?.path || result?.id || `${folder}/${fileName}`;
+    const rawPath = result?.path || result?.id || `${folder}/${fileName}`;
+    const uploadedPath = rawPath.replace(/\\/g, '/');
     return `/api/storage-gateway/download?path=${encodeURIComponent(uploadedPath)}&userId=SYSTEM_PROFILE`;
   } catch (e) {
     console.error("Upload failed", e);
