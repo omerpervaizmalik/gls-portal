@@ -15,6 +15,8 @@ export default function IrisSettingsPage() {
   const [session, setSession] = useState<SessionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const fetchStatus = async () => {
     setLoading(true);
@@ -37,6 +39,36 @@ export default function IrisSettingsPage() {
     await fetch("/api/iris/session", { method: "DELETE" });
     await fetchStatus();
     setClearing(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      const res = await fetch("/api/iris/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(json),
+      });
+
+      if (res.ok) {
+        await fetchStatus();
+        alert("Session uploaded and saved to database successfully!");
+      } else {
+        const err = await res.json();
+        alert("Upload failed: " + (err.error || "Unknown error"));
+      }
+    } catch (err) {
+      alert("Invalid JSON file. Please upload the iris_session.json file.");
+    } finally {
+      setUploading(false);
+      e.target.value = ''; // Reset input
+    }
   };
 
   const statusCard = () => {
@@ -111,6 +143,20 @@ export default function IrisSettingsPage() {
             <div className="flex items-center justify-between">
               {statusCard()}
               <div className="flex items-center space-x-2">
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  ref={fileInputRef} 
+                  style={{ display: 'none' }} 
+                  onChange={handleFileUpload} 
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition-colors border border-emerald-200"
+                >
+                  {uploading ? "Uploading..." : "Upload Session File"}
+                </button>
                 <button onClick={fetchStatus} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400" title="Refresh">
                   <RefreshCw size={16} />
                 </button>
@@ -157,10 +203,10 @@ export default function IrisSettingsPage() {
                 },
                 {
                   step: "4",
-                  icon: Clock,
-                  color: "bg-amber-50 text-amber-600",
-                  title: "Session is saved automatically",
-                  desc: "The session will be saved and used for all future sync operations. It remains valid for ~12 hours. Repeat daily or when it expires.",
+                  icon: ShieldCheck,
+                  color: "bg-emerald-50 text-emerald-600",
+                  title: "Upload the session file here",
+                  desc: "Once captured, click 'Upload Session File' above and select the 'scripts/iris_session.json' file to save it to your database.",
                 },
               ].map(({ step, icon: Icon, color, title, desc, code }) => (
                 <div key={step} className="flex items-start space-x-4">

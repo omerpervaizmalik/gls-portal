@@ -1,32 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exec } from "child_process";
-import path from "path";
-import fs from "fs";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  // Check if a session file exists
-  const sessionPath = path.join(process.cwd(), "scripts", "iris_session.json");
-  const exists = fs.existsSync(sessionPath);
-  
-  if (exists) {
-    const stat = fs.statSync(sessionPath);
-    const ageHours = (Date.now() - stat.mtimeMs) / (1000 * 60 * 60);
-    return NextResponse.json({
-      active: true,
-      savedAt: stat.mtime,
-      ageHours: ageHours.toFixed(1),
-      expired: ageHours > 12
+  try {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: "iris_session" },
     });
+
+    if (setting) {
+      const ageHours = (Date.now() - setting.updatedAt.getTime()) / (1000 * 60 * 60);
+      return NextResponse.json({
+        active: true,
+        savedAt: setting.updatedAt,
+        ageHours: ageHours.toFixed(1),
+        expired: ageHours > 12,
+      });
+    }
+
+    return NextResponse.json({ active: false });
+  } catch (error) {
+    console.error("Failed to get session:", error);
+    return NextResponse.json({ active: false });
   }
-  
-  return NextResponse.json({ active: false });
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    if (!body || !body.storage) {
+      return NextResponse.json({ error: "Invalid session data" }, { status: 400 });
+    }
+
+    const setting = await prisma.systemSetting.upsert({
+      where: { key: "iris_session" },
+      update: { value: body },
+      create: {
+        key: "iris_session",
+        value: body,
+      },
+    });
+
+    return NextResponse.json({ message: "Session saved successfully", savedAt: setting.updatedAt });
+  } catch (error: any) {
+    console.error("Failed to save session:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
 
 export async function DELETE() {
-  // Clear the session file
-  const sessionPath = path.join(process.cwd(), "scripts", "iris_session.json");
-  if (fs.existsSync(sessionPath)) {
-    fs.unlinkSync(sessionPath);
+  try {
+    await prisma.systemSetting.deleteMany({
+      where: { key: "iris_session" },
+    });
+    return NextResponse.json({ message: "Session cleared" });
+  } catch (error) {
+    console.error("Failed to delete session:", error);
+    return NextResponse.json({ message: "Session cleared" });
   }
-  return NextResponse.json({ message: "Session cleared" });
 }
