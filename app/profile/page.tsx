@@ -5,27 +5,26 @@ import { User, Mail, Shield, Save, Camera, Upload, Link as LinkIcon, MapPin, Pho
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import fs from "fs";
-import path from "path";
+import { storage } from "@/lib/storage";
 import { revalidatePath } from "next/cache";
 
-// Helper to save uploaded files to a local public directory
+// Helper to save uploaded files
 async function saveUploadedFile(file: File | null, folder: string): Promise<string | null> {
   if (!file || file.size === 0) return null;
   
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
   
-  const uploadDir = path.join(process.cwd(), "public", "uploads", folder);
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+  const fileExtension = file.name.split(".").pop() || "png";
+  const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${fileExtension}`;
+  
+  try {
+    const result = await storage.uploadFile(folder, fileName, buffer);
+    return result?.webUrl || `/uploads/${folder}/${fileName}`;
+  } catch (e) {
+    console.error("Upload failed", e);
+    return null;
   }
-  
-  const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`;
-  const filePath = path.join(uploadDir, fileName);
-  fs.writeFileSync(filePath, buffer);
-  
-  return `/uploads/${folder}/${fileName}`;
 }
 
 async function updateProfile(formData: FormData) {

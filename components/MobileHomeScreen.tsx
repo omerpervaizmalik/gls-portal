@@ -6,7 +6,7 @@ import NotificationBell from './NotificationBell';
 import { useSession, signOut } from 'next-auth/react';
 import {
   LayoutDashboard, Files, Users, History, LogOut,
-  ShieldCheck, Wifi, Wallet, Scale, ClipboardList, User,
+  ShieldCheck, Wifi, Wallet, Scale, ClipboardList, User, Database,
   ChevronRight,
 } from 'lucide-react';
 
@@ -23,6 +23,7 @@ const mainItems = [
 const adminItems = [
   { icon: Wallet,     label: 'Accounts',    href: '/fams',        grad: '#78350f,#b45309', accent: '#f59e0b' },
   { icon: Wifi,       label: 'IRIS System', href: '/iris',        grad: '#164e63,#0e7490', accent: '#22d3ee' },
+  { icon: Database,   label: 'Backup',      href: '/admin/backup',grad: '#064e3b,#047857', accent: '#10b981' },
   { icon: History,    label: 'Activity',    href: '/logs',        grad: '#312e81,#4338ca', accent: '#818cf8' },
   { icon: ShieldCheck,label: 'Access',      href: '/admin/users', grad: '#7f1d1d,#dc2626', accent: '#f87171' },
 ];
