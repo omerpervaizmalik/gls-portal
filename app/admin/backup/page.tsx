@@ -104,14 +104,24 @@ export default function AdminBackup() {
             <h1 className="text-lg font-bold text-slate-900">Backup & Restore</h1>
           </div>
           
-          <button 
-            onClick={() => handleExport('ALL')}
-            disabled={exporting === 'ALL'}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center shadow-lg shadow-emerald-500/20 disabled:opacity-50"
-          >
-            {exporting === 'ALL' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HardDriveDownload className="mr-2 h-4 w-4" />}
-            Download Complete System
-          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => handleImportClick('ALL')}
+              disabled={importing === 'ALL'}
+              className="bg-white border border-emerald-500 text-emerald-600 hover:bg-emerald-50 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center shadow-sm disabled:opacity-50"
+            >
+              {importing === 'ALL' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+              Restore Complete System
+            </button>
+            <button 
+              onClick={() => handleExport('ALL')}
+              disabled={exporting === 'ALL'}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+            >
+              {exporting === 'ALL' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HardDriveDownload className="mr-2 h-4 w-4" />}
+              Download Complete System
+            </button>
+          </div>
         </header>
 
         <div className="p-8 max-w-5xl mx-auto">
