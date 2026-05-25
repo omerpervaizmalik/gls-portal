@@ -15,6 +15,12 @@ export async function POST(req: NextRequest) {
     const fileExtension = file.name.split(".").pop();
     const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${fileExtension}`;
 
+    if (path === "profiles") {
+      const b64 = buffer.toString("base64");
+      const mime = fileExtension.toLowerCase() === 'jpg' ? 'jpeg' : fileExtension.toLowerCase();
+      return NextResponse.json({ url: `data:image/${mime};base64,${b64}` });
+    }
+
     // Upload via storage abstraction (OneDrive or Local)
     const result = await storage.uploadFile(path, fileName, buffer);
 

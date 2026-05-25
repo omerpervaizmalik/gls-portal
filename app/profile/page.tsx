@@ -20,6 +20,12 @@ async function saveUploadedFile(file: File | null, folder: string): Promise<stri
   const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${fileExtension}`;
   
   try {
+    if (folder === "photos") {
+      const b64 = buffer.toString("base64");
+      const mime = fileExtension.toLowerCase() === 'jpg' ? 'jpeg' : fileExtension.toLowerCase();
+      return `data:image/${mime};base64,${b64}`;
+    }
+
     const result = await storage.uploadFile(folder, fileName, buffer);
     const rawPath = result?.path || result?.id || `${folder}/${fileName}`;
     const uploadedPath = rawPath.replace(/\\/g, '/');
