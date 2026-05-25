@@ -3,6 +3,7 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { AuthGuard } from "@/components/AuthGuard";
 import BiometricGate from "@/components/BiometricGate";
 import MobileTopBar from "@/components/MobileTopBar";
 import BottomNav from "@/components/BottomNav";
@@ -69,7 +70,8 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <Providers>
-          <GlobalNotificationManager />
+          <AuthGuard>
+            <GlobalNotificationManager />
           {!mounted ? (
             <div style={{ width: '100vw', height: '100vh', background: '#0a0f1e' }} />
           ) : (
@@ -85,6 +87,7 @@ export default function RootLayout({
               )}
             </BiometricGate>
           )}
+        </AuthGuard>
         </Providers>
       </body>
     </html>
