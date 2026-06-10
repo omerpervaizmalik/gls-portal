@@ -190,13 +190,6 @@ export default function Sidebar() {
             <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-white transition-colors" />
           </Link>
 
-          <Link
-            href="/requirements"
-            className="flex w-full items-center justify-center space-x-2 px-4 py-3 text-sm font-bold text-amber-500 hover:text-white hover:bg-amber-500/10 rounded-xl transition-all border border-amber-500/20 mb-3"
-          >
-            <ClipboardList size={18} />
-            <span>Doc Requirements</span>
-          </Link>
 
           <button 
             onClick={() => signOut({ callbackUrl: '/login' })}
