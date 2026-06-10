@@ -103,29 +103,32 @@ export class OneDriveService {
       path: item.id
     }));
   }
-
-  private extractId(pathOrId: string): string {
-    if (pathOrId.includes('/')) {
-      const parts = pathOrId.split('/');
-      const lastPart = parts[parts.length - 1];
-      if (/^[a-z0-9!\-]+$/i.test(lastPart) && lastPart.length > 20) {
-        return lastPart;
-      }
+  private parseDrivePath(pathOrId: string) {
+    const isId = (str: string) => /^[a-z0-9!\-]+$/i.test(str) && str.length > 20;
+    if (!pathOrId || pathOrId === 'root') return { type: 'root' };
+    
+    if (!pathOrId.includes('/')) {
+      if (isId(pathOrId)) return { type: 'id', id: pathOrId };
+      return { type: 'path', path: encodeURIComponent(pathOrId) };
     }
-    return pathOrId;
+
+    const parts = pathOrId.split('/');
+    if (isId(parts[0])) {
+      return { type: 'id_with_path', id: parts[0], path: parts.slice(1).map(p => encodeURIComponent(p)).join('/') };
+    }
+    if (isId(parts[parts.length - 1])) {
+      return { type: 'id', id: parts[parts.length - 1] };
+    }
+    return { type: 'path', path: parts.map(p => encodeURIComponent(p)).join('/') };
   }
 
   async uploadFile(parentFolderId: string, fileName: string, content: any) {
-    let parent = this.extractId(parentFolderId);
+    const parsed = this.parseDrivePath(parentFolderId);
     let endpoint;
-    if (parent === '' || parent === 'root') {
-      endpoint = `/me/drive/root:/${encodeURIComponent(fileName)}:/content`;
-    } else if (parent.includes('/') || !/^[a-z0-9!\-]+$/i.test(parent)) {
-      const encodedPath = parent.split('/').map(p => encodeURIComponent(p)).join('/');
-      endpoint = `/me/drive/root:/${encodedPath}/${encodeURIComponent(fileName)}:/content`;
-    } else {
-      endpoint = `/me/drive/items/${parent}:/${encodeURIComponent(fileName)}:/content`;
-    }
+    if (parsed.type === 'root') endpoint = `/me/drive/root:/${encodeURIComponent(fileName)}:/content`;
+    else if (parsed.type === 'id') endpoint = `/me/drive/items/${parsed.id}:/${encodeURIComponent(fileName)}:/content`;
+    else if (parsed.type === 'id_with_path') endpoint = `/me/drive/items/${parsed.id}:/${parsed.path}/${encodeURIComponent(fileName)}:/content`;
+    else endpoint = `/me/drive/root:/${parsed.path}/${encodeURIComponent(fileName)}:/content`;
 
     return await this.graphFetch(endpoint, {
       method: 'PUT',
@@ -156,14 +159,11 @@ export class OneDriveService {
   }
 
   async renameItem(itemIdOrPath: string, newName: string) {
+    const parsed = this.parseDrivePath(itemIdOrPath);
     let endpoint;
-    let idOrPath = this.extractId(itemIdOrPath);
-    if (idOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(idOrPath)) {
-      const encodedPath = idOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
-      endpoint = `/me/drive/root:/${encodedPath}`;
-    } else {
-      endpoint = `/me/drive/items/${idOrPath}`;
-    }
+    if (parsed.type === 'id') endpoint = `/me/drive/items/${parsed.id}`;
+    else if (parsed.type === 'id_with_path') endpoint = `/me/drive/items/${parsed.id}:/${parsed.path}`;
+    else endpoint = `/me/drive/root:/${parsed.path}`;
     return await this.graphFetch(endpoint, {
       method: 'PATCH',
       body: JSON.stringify({ name: newName })
@@ -171,28 +171,22 @@ export class OneDriveService {
   }
 
   async deleteItem(itemIdOrPath: string) {
+    const parsed = this.parseDrivePath(itemIdOrPath);
     let endpoint;
-    let idOrPath = this.extractId(itemIdOrPath);
-    if (idOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(idOrPath)) {
-      const encodedPath = idOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
-      endpoint = `/me/drive/root:/${encodedPath}`;
-    } else {
-      endpoint = `/me/drive/items/${idOrPath}`;
-    }
+    if (parsed.type === 'id') endpoint = `/me/drive/items/${parsed.id}`;
+    else if (parsed.type === 'id_with_path') endpoint = `/me/drive/items/${parsed.id}:/${parsed.path}`;
+    else endpoint = `/me/drive/root:/${parsed.path}`;
     await this.graphFetch(endpoint, { method: 'DELETE' });
     return { success: true };
   }
 
   async getDownloadUrl(fileIdOrPath: string): Promise<string> {
     const token = await this.getValidToken();
+    const parsed = this.parseDrivePath(fileIdOrPath);
     let endpoint;
-    let idOrPath = this.extractId(fileIdOrPath);
-    if (idOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(idOrPath)) {
-      const encodedPath = idOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
-      endpoint = `/me/drive/root:/${encodedPath}:/content`;
-    } else {
-      endpoint = `/me/drive/items/${idOrPath}/content`;
-    }
+    if (parsed.type === 'id') endpoint = `/me/drive/items/${parsed.id}/content`;
+    else if (parsed.type === 'id_with_path') endpoint = `/me/drive/items/${parsed.id}:/${parsed.path}:/content`;
+    else endpoint = `/me/drive/root:/${parsed.path}:/content`;
     
     console.log("[ONEDRIVE] getDownloadUrl via /content redirect for:", endpoint);
     const url = `https://graph.microsoft.com/v1.0${endpoint}`;
@@ -222,14 +216,11 @@ export class OneDriveService {
 
   async getFileContent(fileIdOrPath: string): Promise<ArrayBuffer> {
     const token = await this.getValidToken();
+    const parsed = this.parseDrivePath(fileIdOrPath);
     let endpoint;
-    let idOrPath = this.extractId(fileIdOrPath);
-    if (idOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(idOrPath)) {
-      const encodedPath = idOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
-      endpoint = `/me/drive/root:/${encodedPath}:/content`;
-    } else {
-      endpoint = `/me/drive/items/${idOrPath}/content`;
-    }
+    if (parsed.type === 'id') endpoint = `/me/drive/items/${parsed.id}/content`;
+    else if (parsed.type === 'id_with_path') endpoint = `/me/drive/items/${parsed.id}:/${parsed.path}:/content`;
+    else endpoint = `/me/drive/root:/${parsed.path}:/content`;
     
     console.log("[ONEDRIVE] getFileContent fetching endpoint:", endpoint);
     const url = `https://graph.microsoft.com/v1.0${endpoint}`;
