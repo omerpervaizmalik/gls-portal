@@ -10,7 +10,27 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const folderPath = searchParams.get('path') || '';
 
-    const items = await storage.listFolder(folderPath);
+    let user = null;
+    if (token?.email) {
+      const { prisma } = await import('@/lib/prisma');
+      user = await prisma.user.findUnique({
+        where: { email: token.email },
+        include: { permissions: true }
+      });
+    }
+
+    let items = await storage.listFolder(folderPath);
+    
+    // Filter items based on user permissions
+    if (user?.role !== 'ADMIN' && user?.permissions) {
+      items = items.filter((item: any) => {
+        const itemPath = folderPath ? `${folderPath}/${item.name}` : item.name;
+        return user.permissions.some(p => 
+          itemPath.includes(p.folderPath) || p.folderPath === ''
+        );
+      });
+    }
+
     return NextResponse.json(items);
   } catch (error: any) {
     console.error("STORAGE_GATEWAY_ERROR:", error);
