@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     if (path === "profiles") {
       const b64 = buffer.toString("base64");
-      const mime = fileExtension.toLowerCase() === 'jpg' ? 'jpeg' : fileExtension.toLowerCase();
+      const mime = fileExtension?.toLowerCase() === 'jpg' ? 'jpeg' : fileExtension?.toLowerCase() || 'jpeg';
       return NextResponse.json({ url: `data:image/${mime};base64,${b64}` });
     }
 
