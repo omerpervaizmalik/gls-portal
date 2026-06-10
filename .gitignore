@@ -60,3 +60,6 @@ tsconfig.tsbuildinfo
 
 # Mobile build scripts
 mobile-build*.ps1
+
+.vercel
+.env*.local
