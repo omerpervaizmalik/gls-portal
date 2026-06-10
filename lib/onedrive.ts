@@ -173,9 +173,9 @@ export class OneDriveService {
     let endpoint;
     if (fileIdOrPath.includes('/') || !/^[A-Z0-9!]+$/.test(fileIdOrPath)) {
       const encodedPath = fileIdOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
-      endpoint = `/me/drive/root:/${encodedPath}?$select=@microsoft.graph.downloadUrl`;
+      endpoint = `/me/drive/root:/${encodedPath}`;
     } else {
-      endpoint = `/me/drive/items/${fileIdOrPath}?$select=@microsoft.graph.downloadUrl`;
+      endpoint = `/me/drive/items/${fileIdOrPath}`;
     }
     const data = await this.graphFetch(endpoint);
     return data['@microsoft.graph.downloadUrl'];
