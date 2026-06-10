@@ -54,10 +54,19 @@ export async function GET(req: NextRequest) {
 
     if (process.env.USE_CLOUD_STORAGE === 'true') {
       const { onedrive } = await import('@/lib/onedrive');
+      console.log("[DOWNLOAD] Getting download URL for:", itemPath);
       const downloadUrl = await onedrive.getDownloadUrl(itemPath as string);
+      console.log("[DOWNLOAD] URL resolved to:", downloadUrl);
       
+      if (!downloadUrl) {
+        throw new Error("downloadUrl is undefined or null from OneDrive API");
+      }
+
       if (mode === 'view') {
         const response = await fetch(downloadUrl);
+        if (!response.ok) {
+           throw new Error(`Failed to fetch from downloadUrl. Status: ${response.status}`);
+        }
         const arrayBuffer = await response.arrayBuffer();
         return new NextResponse(arrayBuffer, {
           headers: {
@@ -80,7 +89,8 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[DOWNLOAD ERROR]", error);
+    return NextResponse.json({ error: error.message, stack: error.stack }, { status: 500 });
   }
 }
 

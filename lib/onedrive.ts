@@ -169,16 +169,68 @@ export class OneDriveService {
     return { success: true };
   }
 
-  async getDownloadUrl(fileIdOrPath: string) {
+  async getDownloadUrl(fileIdOrPath: string): Promise<string> {
+    const token = await this.getValidToken();
     let endpoint;
     if (fileIdOrPath.includes('/') || !/^[A-Z0-9!]+$/.test(fileIdOrPath)) {
       const encodedPath = fileIdOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
-      endpoint = `/me/drive/root:/${encodedPath}?$select=id,@microsoft.graph.downloadUrl`;
+      endpoint = `/me/drive/root:/${encodedPath}:/content`;
     } else {
-      endpoint = `/me/drive/items/${fileIdOrPath}?$select=id,@microsoft.graph.downloadUrl`;
+      endpoint = `/me/drive/items/${fileIdOrPath}/content`;
     }
-    const data = await this.graphFetch(endpoint);
-    return data['@microsoft.graph.downloadUrl'];
+    
+    console.log("[ONEDRIVE] getDownloadUrl via /content redirect for:", endpoint);
+    const url = `https://graph.microsoft.com/v1.0${endpoint}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      redirect: 'manual'
+    });
+
+    // MS Graph API returns 302 Found with the pre-authenticated download URL in the Location header
+    if (response.status === 302 || response.status === 301 || response.status === 307 || response.status === 308) {
+      const location = response.headers.get('location');
+      if (location) return location;
+    }
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("[ONEDRIVE] getDownloadUrl error:", error);
+      throw new Error(`Microsoft Graph Error: ${error}`);
+    }
+
+    throw new Error("Failed to get download URL: No redirect location found.");
+  }
+
+  async getFileContent(fileIdOrPath: string): Promise<ArrayBuffer> {
+    const token = await this.getValidToken();
+    let endpoint;
+    if (fileIdOrPath.includes('/') || !/^[A-Z0-9!]+$/.test(fileIdOrPath)) {
+      const encodedPath = fileIdOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
+      endpoint = `/me/drive/root:/${encodedPath}:/content`;
+    } else {
+      endpoint = `/me/drive/items/${fileIdOrPath}/content`;
+    }
+    
+    console.log("[ONEDRIVE] getFileContent fetching endpoint:", endpoint);
+    const url = `https://graph.microsoft.com/v1.0${endpoint}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("[ONEDRIVE] getFileContent error:", error);
+      throw new Error(`Microsoft Graph Error: ${error}`);
+    }
+
+    return await response.arrayBuffer();
   }
 }
 
