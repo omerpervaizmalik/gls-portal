@@ -82,7 +82,7 @@ export class OneDriveService {
     let endpoint;
     if (folderPath === '' || folderPath === 'root') {
       endpoint = '/me/drive/root/children';
-    } else if (folderPath.includes('/') || !/^[A-Z0-9!]+$/.test(folderPath)) {
+    } else if (folderPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(folderPath)) {
       // If it looks like a path (has slashes or spaces), use the path syntax
       const encodedPath = folderPath.split('/').map(p => encodeURIComponent(p)).join('/');
       endpoint = `/me/drive/root:/${encodedPath}:/children`;
@@ -108,7 +108,7 @@ export class OneDriveService {
     let endpoint;
     if (parentFolderId === '' || parentFolderId === 'root') {
       endpoint = `/me/drive/root:/${encodeURIComponent(fileName)}:/content`;
-    } else if (parentFolderId.includes('/') || !/^[A-Z0-9!]+$/.test(parentFolderId)) {
+    } else if (parentFolderId.includes('/') || !/^[a-z0-9!\-]+$/i.test(parentFolderId)) {
       const encodedPath = parentFolderId.split('/').map(p => encodeURIComponent(p)).join('/');
       endpoint = `/me/drive/root:/${encodedPath}/${encodeURIComponent(fileName)}:/content`;
     } else {
@@ -126,7 +126,7 @@ export class OneDriveService {
     let endpoint;
     if (parentFolderId === '' || parentFolderId === 'root') {
       endpoint = '/me/drive/root/children';
-    } else if (parentFolderId.includes('/') || !/^[A-Z0-9!]+$/.test(parentFolderId)) {
+    } else if (parentFolderId.includes('/') || !/^[a-z0-9!\-]+$/i.test(parentFolderId)) {
       const encodedPath = parentFolderId.split('/').map(p => encodeURIComponent(p)).join('/');
       endpoint = `/me/drive/root:/${encodedPath}:/children`;
     } else {
@@ -145,7 +145,7 @@ export class OneDriveService {
 
   async renameItem(itemIdOrPath: string, newName: string) {
     let endpoint;
-    if (itemIdOrPath.includes('/') || !/^[A-Z0-9!]+$/.test(itemIdOrPath)) {
+    if (itemIdOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(itemIdOrPath)) {
       const encodedPath = itemIdOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
       endpoint = `/me/drive/root:/${encodedPath}`;
     } else {
@@ -159,7 +159,7 @@ export class OneDriveService {
 
   async deleteItem(itemIdOrPath: string) {
     let endpoint;
-    if (itemIdOrPath.includes('/') || !/^[A-Z0-9!]+$/.test(itemIdOrPath)) {
+    if (itemIdOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(itemIdOrPath)) {
       const encodedPath = itemIdOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
       endpoint = `/me/drive/root:/${encodedPath}`;
     } else {
@@ -172,7 +172,7 @@ export class OneDriveService {
   async getDownloadUrl(fileIdOrPath: string): Promise<string> {
     const token = await this.getValidToken();
     let endpoint;
-    if (fileIdOrPath.includes('/') || !/^[A-Z0-9!]+$/.test(fileIdOrPath)) {
+    if (fileIdOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(fileIdOrPath)) {
       const encodedPath = fileIdOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
       endpoint = `/me/drive/root:/${encodedPath}:/content`;
     } else {
