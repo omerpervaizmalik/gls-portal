@@ -22,10 +22,10 @@ export async function GET(req: NextRequest) {
     let items = await storage.listFolder(folderPath);
     
     // Filter items based on user permissions
-    if (user?.role !== 'ADMIN' && user?.permissions) {
+    if (user && user.role !== 'ADMIN' && user.permissions) {
       items = items.filter((item: any) => {
         const itemPath = folderPath ? `${folderPath}/${item.name}` : item.name;
-        return user.permissions.some(p => 
+        return user!.permissions.some((p: any) => 
           itemPath.includes(p.folderPath) || p.folderPath === ''
         );
       });
