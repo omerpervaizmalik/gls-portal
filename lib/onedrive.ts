@@ -104,15 +104,27 @@ export class OneDriveService {
     }));
   }
 
+  private extractId(pathOrId: string): string {
+    if (pathOrId.includes('/')) {
+      const parts = pathOrId.split('/');
+      const lastPart = parts[parts.length - 1];
+      if (/^[a-z0-9!\-]+$/i.test(lastPart) && lastPart.length > 20) {
+        return lastPart;
+      }
+    }
+    return pathOrId;
+  }
+
   async uploadFile(parentFolderId: string, fileName: string, content: any) {
+    let parent = this.extractId(parentFolderId);
     let endpoint;
-    if (parentFolderId === '' || parentFolderId === 'root') {
+    if (parent === '' || parent === 'root') {
       endpoint = `/me/drive/root:/${encodeURIComponent(fileName)}:/content`;
-    } else if (parentFolderId.includes('/') || !/^[a-z0-9!\-]+$/i.test(parentFolderId)) {
-      const encodedPath = parentFolderId.split('/').map(p => encodeURIComponent(p)).join('/');
+    } else if (parent.includes('/') || !/^[a-z0-9!\-]+$/i.test(parent)) {
+      const encodedPath = parent.split('/').map(p => encodeURIComponent(p)).join('/');
       endpoint = `/me/drive/root:/${encodedPath}/${encodeURIComponent(fileName)}:/content`;
     } else {
-      endpoint = `/me/drive/items/${parentFolderId}:/${encodeURIComponent(fileName)}:/content`;
+      endpoint = `/me/drive/items/${parent}:/${encodeURIComponent(fileName)}:/content`;
     }
 
     return await this.graphFetch(endpoint, {
@@ -145,11 +157,12 @@ export class OneDriveService {
 
   async renameItem(itemIdOrPath: string, newName: string) {
     let endpoint;
-    if (itemIdOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(itemIdOrPath)) {
-      const encodedPath = itemIdOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
+    let idOrPath = this.extractId(itemIdOrPath);
+    if (idOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(idOrPath)) {
+      const encodedPath = idOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
       endpoint = `/me/drive/root:/${encodedPath}`;
     } else {
-      endpoint = `/me/drive/items/${itemIdOrPath}`;
+      endpoint = `/me/drive/items/${idOrPath}`;
     }
     return await this.graphFetch(endpoint, {
       method: 'PATCH',
@@ -159,11 +172,12 @@ export class OneDriveService {
 
   async deleteItem(itemIdOrPath: string) {
     let endpoint;
-    if (itemIdOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(itemIdOrPath)) {
-      const encodedPath = itemIdOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
+    let idOrPath = this.extractId(itemIdOrPath);
+    if (idOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(idOrPath)) {
+      const encodedPath = idOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
       endpoint = `/me/drive/root:/${encodedPath}`;
     } else {
-      endpoint = `/me/drive/items/${itemIdOrPath}`;
+      endpoint = `/me/drive/items/${idOrPath}`;
     }
     await this.graphFetch(endpoint, { method: 'DELETE' });
     return { success: true };
@@ -172,11 +186,12 @@ export class OneDriveService {
   async getDownloadUrl(fileIdOrPath: string): Promise<string> {
     const token = await this.getValidToken();
     let endpoint;
-    if (fileIdOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(fileIdOrPath)) {
-      const encodedPath = fileIdOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
+    let idOrPath = this.extractId(fileIdOrPath);
+    if (idOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(idOrPath)) {
+      const encodedPath = idOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
       endpoint = `/me/drive/root:/${encodedPath}:/content`;
     } else {
-      endpoint = `/me/drive/items/${fileIdOrPath}/content`;
+      endpoint = `/me/drive/items/${idOrPath}/content`;
     }
     
     console.log("[ONEDRIVE] getDownloadUrl via /content redirect for:", endpoint);
@@ -208,11 +223,12 @@ export class OneDriveService {
   async getFileContent(fileIdOrPath: string): Promise<ArrayBuffer> {
     const token = await this.getValidToken();
     let endpoint;
-    if (fileIdOrPath.includes('/') || !/^[A-Z0-9!]+$/.test(fileIdOrPath)) {
-      const encodedPath = fileIdOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
+    let idOrPath = this.extractId(fileIdOrPath);
+    if (idOrPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(idOrPath)) {
+      const encodedPath = idOrPath.split('/').map(p => encodeURIComponent(p)).join('/');
       endpoint = `/me/drive/root:/${encodedPath}:/content`;
     } else {
-      endpoint = `/me/drive/items/${fileIdOrPath}/content`;
+      endpoint = `/me/drive/items/${idOrPath}/content`;
     }
     
     console.log("[ONEDRIVE] getFileContent fetching endpoint:", endpoint);
