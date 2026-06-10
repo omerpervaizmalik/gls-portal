@@ -37,18 +37,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    if (process.env.USE_CLOUD_STORAGE === 'true') {
-      const { onedrive } = await import('@/lib/onedrive');
-      const downloadUrl = await onedrive.getDownloadUrl(itemPath);
-      return NextResponse.redirect(downloadUrl);
-    }
-
-    const fullPath = path.resolve(process.env.LOCAL_STORAGE_PATH || 'storage', itemPath);
-    const fileBuffer = await fs.readFile(fullPath);
-    const fileName = path.basename(fullPath);
-    const ext = path.extname(fileName).toLowerCase();
     const mode = req.nextUrl.searchParams.get('mode') || 'download';
 
+    const fileName = path.basename(itemPath as string);
+    const ext = path.extname(fileName).toLowerCase();
     const mimeTypes: Record<string, string> = {
       '.pdf': 'application/pdf',
       '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif',
@@ -58,8 +50,28 @@ export async function GET(req: NextRequest) {
       '.xls': 'application/vnd.ms-excel',
       '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     };
-
     const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+    if (process.env.USE_CLOUD_STORAGE === 'true') {
+      const { onedrive } = await import('@/lib/onedrive');
+      const downloadUrl = await onedrive.getDownloadUrl(itemPath as string);
+      
+      if (mode === 'view') {
+        const response = await fetch(downloadUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        return new NextResponse(arrayBuffer, {
+          headers: {
+            'Content-Disposition': `inline; filename="${fileName}"`,
+            'Content-Type': contentType,
+          },
+        });
+      } else {
+        return NextResponse.redirect(downloadUrl);
+      }
+    }
+
+    const fullPath = path.resolve(process.env.LOCAL_STORAGE_PATH || 'storage', itemPath as string);
+    const fileBuffer = await fs.readFile(fullPath);
 
     return new NextResponse(fileBuffer, {
       headers: {

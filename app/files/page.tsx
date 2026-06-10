@@ -54,6 +54,10 @@ function FileArchiveContent() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [textContent, setTextContent] = useState<string>('');
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [isSavingText, setIsSavingText] = useState(false);
+  const [textFetchError, setTextFetchError] = useState(false);
 
   useEffect(() => {
     // If the URL changes (e.g. from a direct link), update the local path state
@@ -101,6 +105,31 @@ function FileArchiveContent() {
 
     fetchFiles();
   }, [path]);
+
+  useEffect(() => {
+    if (previewFile && previewFile.name.toLowerCase().endsWith('.txt')) {
+      setTextContent('Loading...');
+      setTextFetchError(false);
+      const url = `/api/storage-gateway/download?path=${encodeURIComponent(previewFile.path)}&mode=view&userId=${session?.user?.id || 'admin-id'}`;
+      fetch(url)
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to fetch");
+          return res.text();
+        })
+        .then(text => {
+          setTextContent(text);
+          setIsEditingText(true);
+        })
+        .catch(err => {
+          console.error(err);
+          setTextContent('Failed to load text content.');
+          setTextFetchError(true);
+        });
+    } else {
+      setIsEditingText(false);
+      setTextContent('');
+    }
+  }, [previewFile, session]);
 
   const handleFolderClick = (folderName: string) => {
     setPath((prev) => (prev ? `${prev}/${folderName}` : folderName));
@@ -151,6 +180,29 @@ function FileArchiveContent() {
     
     // 3. Fallback: Show the link-based menu if native file sharing fails
     setShowShareMenu(!showShareMenu);
+  };
+
+  const handleSaveText = async () => {
+    if (!previewFile) return;
+    setIsSavingText(true);
+    try {
+      const formData = new FormData();
+      const file = new File([textContent], previewFile.name, { type: 'text/plain' });
+      formData.append('file', file);
+      formData.append('targetFolderPath', path);
+
+      const res = await fetch('/api/storage-gateway', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Failed to save file');
+      alert('File saved successfully!');
+    } catch (e) {
+      alert('Error saving file');
+    } finally {
+      setIsSavingText(false);
+    }
   };
 
   const handleCreateFolder = async () => {
@@ -440,11 +492,30 @@ function FileArchiveContent() {
                     className="max-w-full max-h-full object-contain"
                   />
                 ) : previewFile.name.toLowerCase().endsWith('.txt') ? (
-                  <iframe 
-                    src={`/api/storage-gateway/download?path=${encodeURIComponent(previewFile.path)}&mode=view&userId=${session?.user?.id || 'admin-id'}`}
-                    className="w-full h-full border-none bg-white p-10 font-mono text-sm"
-                    title="Text Preview"
-                  />
+                  <div className="w-full h-full bg-white flex flex-col rounded-xl overflow-hidden shadow-inner">
+                    <div className="flex justify-between items-center px-4 py-3 bg-slate-100 border-b border-slate-200">
+                      <h4 className="font-bold text-slate-700 text-sm flex items-center">
+                        <Edit2 className="w-4 h-4 mr-2" /> Text Editor
+                      </h4>
+                      <button 
+                         onClick={handleSaveText}
+                         disabled={isSavingText || textFetchError}
+                         className={cn(
+                           "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                           isSavingText || textFetchError ? "bg-slate-300 text-slate-500" : "bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20"
+                         )}
+                      >
+                         {isSavingText ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                    <textarea
+                      value={textContent}
+                      onChange={(e) => setTextContent(e.target.value)}
+                      disabled={textFetchError}
+                      className="w-full flex-1 p-6 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-inset focus:ring-amber-500 bg-white"
+                      placeholder="Start typing..."
+                    />
+                  </div>
                 ) : (
                   <div className="text-center text-white p-10">
                     <FileIcon size={80} className="mx-auto mb-6 opacity-20" />
