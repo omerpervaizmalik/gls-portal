@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Sidebar from '@/components/Sidebar';
 import UploadModal from '@/components/UploadModal';
@@ -45,6 +45,8 @@ interface FileItem {
 function FileArchiveContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const isAdmin = session?.user?.role === 'ADMIN';
   const initialPath = searchParams.get('path') || '';
   
@@ -61,11 +63,9 @@ function FileArchiveContent() {
   const [textFetchError, setTextFetchError] = useState(false);
 
   useEffect(() => {
-    // If the URL changes (e.g. from a direct link), update the local path state
-    const currentPath = searchParams.get('path');
-    if (currentPath !== null) {
-      setPath(currentPath);
-    }
+    // If the URL changes (e.g. from a direct link or back button), update the local path state
+    const currentPath = searchParams.get('path') || '';
+    setPath(currentPath);
   }, [searchParams]);
 
   useEffect(() => {
@@ -133,7 +133,9 @@ function FileArchiveContent() {
   }, [previewFile, session]);
 
   const handleFolderClick = (folderName: string) => {
-    setPath((prev) => (prev ? `${prev}/${folderName}` : folderName));
+    const newPath = path ? `${path}/${folderName}` : folderName;
+    router.push(`${pathname}?path=${encodeURIComponent(newPath)}`);
+    setPath(newPath);
   };
 
   const handleFileAction = (item: FileItem) => {
@@ -259,7 +261,13 @@ function FileArchiveContent() {
     if (!path) return;                 // already at root → stay on same page
     const parts = path.split('/');
     parts.pop();                       // remove last folder segment
-    setPath(parts.join('/'));          // update state – stays on File Archive page
+    const newPath = parts.join('/');
+    if (newPath) {
+      router.push(`${pathname}?path=${encodeURIComponent(newPath)}`);
+    } else {
+      router.push(pathname);
+    }
+    setPath(newPath);
   };
 
   const formatSize = (bytes: number) => {
@@ -329,7 +337,10 @@ function FileArchiveContent() {
 
         {/* Breadcrumbs */}
         <div className="px-8 py-3 bg-slate-50 border-b border-slate-200 flex items-center text-xs font-medium text-slate-500 overflow-x-auto">
-          <button onClick={() => setPath('')} className="hover:text-amber-500 transition-colors flex items-center shrink-0">
+          <button onClick={() => {
+            router.push(pathname);
+            setPath('');
+          }} className="hover:text-amber-500 transition-colors flex items-center shrink-0">
             Root
           </button>
           {path.split('/').filter(p => p).map((part, i, arr) => {
@@ -339,7 +350,10 @@ function FileArchiveContent() {
               <React.Fragment key={currentPath}>
                 <ChevronRight size={14} className="mx-1 text-slate-300 shrink-0" />
                 <button 
-                  onClick={() => setPath(currentPath)}
+                  onClick={() => {
+                    router.push(`${pathname}?path=${encodeURIComponent(currentPath)}`);
+                    setPath(currentPath);
+                  }}
                   disabled={isLast}
                   className={cn(
                     "truncate shrink-0 transition-colors",
