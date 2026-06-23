@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         { label: 'Pending Filings', value: pendingFilings.toString(), change: '-3%' },
       ],
       recentFiles: recentFiles.map(log => ({
-        name: log.path.split('/').pop() || log.path,
+        name: log.resource ? log.resource.split('/').pop() : 'Unknown',
         user: log.user.name || log.user.email,
         details: log.details,
         date: formatRelativeTime(log.timestamp)

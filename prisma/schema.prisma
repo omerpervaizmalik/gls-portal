@@ -206,10 +206,14 @@ model Permission {
 model ActivityLog {
   id            String   @id @default(cuid())
   userId        String
-  action        String   // e.g., "VIEW", "UPLOAD", "DELETE"
-  path          String
+  action        String   // e.g., "LOGIN", "VIEW", "UPLOAD", "DELETE", "NAVIGATE"
+  module        String   @default("GENERAL") // e.g., "AUTH", "FILE_ARCHIVE", "NAVIGATION"
+  resource      String?  // e.g., the URL or file path
+  details       String?  // Human readable description
+  metadata      Json?    // Detailed JSON object of the event
+  ipAddress     String?
+  userAgent     String?
   timestamp     DateTime @default(now())
-  details       String?
 
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

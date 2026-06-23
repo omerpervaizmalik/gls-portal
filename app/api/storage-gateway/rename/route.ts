@@ -3,6 +3,7 @@ import { storage } from '@/lib/storage';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { logActivity } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions as any) as any;
@@ -26,13 +27,12 @@ export async function POST(req: NextRequest) {
 
     const result = await storage.renameItem(oldPath, newName);
     
-    await prisma.activityLog.create({
-      data: {
-        userId: session.user.id,
-        action: 'RENAME',
-        path: oldPath,
-        details: `Renamed to ${newName}`
-      }
+    await logActivity({
+      userId: session.user.id,
+      action: 'RENAME',
+      module: 'FILE_ARCHIVE',
+      resource: oldPath,
+      details: `Renamed to ${newName}`
     });
 
     return NextResponse.json(result);

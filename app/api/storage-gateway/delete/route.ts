@@ -3,6 +3,7 @@ import { storage } from '@/lib/storage';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { logActivity } from "@/lib/logger";
 
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions as any) as any;
@@ -23,13 +24,12 @@ export async function DELETE(req: NextRequest) {
 
     await storage.deleteItem(itemPath);
     
-    await prisma.activityLog.create({
-      data: {
-        userId: session.user.id,
-        action: 'DELETE',
-        path: itemPath,
-        details: `Deleted item from local storage`
-      }
+    await logActivity({
+      userId: session.user.id,
+      action: 'DELETE',
+      module: 'FILE_ARCHIVE',
+      resource: itemPath,
+      details: `Deleted item from local storage`
     });
 
     return NextResponse.json({ success: true });

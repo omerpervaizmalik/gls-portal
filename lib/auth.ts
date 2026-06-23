@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
+import { logActivity } from "@/lib/logger";
 
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -59,6 +60,18 @@ export const authOptions: AuthOptions = {
         session.user.id = token.id;
       }
       return session;
+    }
+  },
+  events: {
+    async signIn(message) {
+      if (message.user) {
+        await logActivity({
+          userId: message.user.id,
+          action: 'LOGIN',
+          module: 'AUTH',
+          details: `User ${message.user.email} logged in`
+        });
+      }
     }
   },
   pages: {

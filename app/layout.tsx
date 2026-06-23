@@ -8,6 +8,7 @@ import BiometricGate from "@/components/BiometricGate";
 import MobileTopBar from "@/components/MobileTopBar";
 import BottomNav from "@/components/BottomNav";
 import GlobalNotificationManager from "@/components/GlobalNotificationManager";
+import GlobalActivityTracker from "@/components/GlobalActivityTracker";
 import { initMobileAppStyling, isNative } from "@/lib/platform";
 import React from "react";
 import { usePathname } from "next/navigation";
@@ -72,6 +73,7 @@ export default function RootLayout({
         <Providers>
           <AuthGuard>
             <GlobalNotificationManager />
+            <GlobalActivityTracker />
           {!mounted ? (
             <div style={{ width: '100vw', height: '100vh', background: '#0a0f1e' }} />
           ) : (

@@ -165,6 +165,9 @@ export default function ActivityLogs() {
                         </p>
                       </td>
                       <td className="px-6 py-4">
+                        <span className="inline-flex px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-700 mr-2">
+                          {log.source || "SYSTEM"}
+                        </span>
                         <span className="inline-flex px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700">
                           Success
                         </span>

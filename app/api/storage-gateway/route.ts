@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storage } from '@/lib/storage';
 import { getToken } from "next-auth/jwt";
+import { logActivity } from "@/lib/logger";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
@@ -56,6 +59,18 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
 
     const result = await storage.uploadFile(targetFolderPath, file.name, buffer);
+
+    const session = await getServerSession(authOptions as any) as any;
+    if (session?.user?.id) {
+      await logActivity({
+        userId: session.user.id,
+        action: 'UPLOAD',
+        module: 'FILE_ARCHIVE',
+        resource: `${targetFolderPath}/${file.name}`,
+        details: `Uploaded file ${file.name}`
+      });
+    }
+
     return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

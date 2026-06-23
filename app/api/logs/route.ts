@@ -47,11 +47,13 @@ export async function GET(req: NextRequest) {
       unifiedLogs.push({
         id: `act_${log.id}`,
         action: log.action,
-        path: log.path,
-        details: log.details || "File system activity",
+        path: log.resource || "N/A",
+        details: log.details || "Activity",
         user: log.user,
         timestamp: log.timestamp,
-        source: 'FILE'
+        source: log.module || 'SYSTEM',
+        ipAddress: log.ipAddress,
+        userAgent: log.userAgent,
       });
     });
 

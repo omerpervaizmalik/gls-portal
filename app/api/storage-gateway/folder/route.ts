@@ -3,6 +3,7 @@ import { storage } from '@/lib/storage';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { logActivity } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions as any) as any;
@@ -25,13 +26,12 @@ export async function POST(req: NextRequest) {
 
     const result = await storage.createFolder(parentPath || '', folderName);
     
-    await prisma.activityLog.create({
-      data: {
-        userId: session.user.id,
-        action: 'CREATE_FOLDER',
-        path: result.id || `${parentPath}/${folderName}`,
-        details: `Created new folder ${folderName}`
-      }
+    await logActivity({
+      userId: session.user.id,
+      action: 'CREATE_FOLDER',
+      module: 'FILE_ARCHIVE',
+      resource: result.id || `${parentPath}/${folderName}`,
+      details: `Created new folder ${folderName}`
     });
 
     return NextResponse.json(result);
