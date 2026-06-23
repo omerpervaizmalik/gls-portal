@@ -45,6 +45,7 @@ interface FileItem {
 function FileArchiveContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
+  const isAdmin = session?.user?.role === 'ADMIN';
   const initialPath = searchParams.get('path') || '';
   
   const [items, setItems] = useState<FileItem[]>([]);
@@ -408,12 +409,14 @@ function FileArchiveContent() {
                           >
                             <Edit2 size={16} />
                           </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleDelete(item.path); }}
-                            className="p-1.5 hover:bg-red-100 rounded-md text-red-500 transition-colors" title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {isAdmin && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleDelete(item.path); }}
+                              className="p-1.5 hover:bg-red-100 rounded-md text-red-500 transition-colors" title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
