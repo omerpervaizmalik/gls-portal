@@ -184,7 +184,8 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className={`grid grid-cols-1 ${isAdmin ? 'lg:grid-cols-3' : 'lg:grid-cols-1'} gap-8`}>
+            {isAdmin && (
             <div className="lg:col-span-2 space-y-6">
               <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
@@ -220,6 +221,7 @@ export default function Dashboard() {
                 </div>
               </section>
             </div>
+            )}
 
             <div className="space-y-6">
               <section className="bg-corporate-primary text-white rounded-xl p-6 shadow-xl relative overflow-hidden group">
