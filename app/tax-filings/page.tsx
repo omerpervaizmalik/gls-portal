@@ -123,6 +123,45 @@ export default function TaxFilingsPage() {
     }
   };
 
+  const handleDeleteYear = async () => {
+    if (!selectedYear) return;
+    if (!confirm(`Are you sure you want to delete all tax filing records for Tax Year ${selectedYear}? This action cannot be undone.`)) return;
+
+    try {
+      const res = await fetch(`/api/tax-filings?year=${selectedYear}`, {
+        method: "DELETE"
+      });
+      const data = await res.json();
+      if (data.error) alert(data.error);
+      else {
+        alert(data.message);
+        setSelectedYear(null);
+        fetchYears();
+      }
+    } catch (e) {
+      alert("Failed to delete year");
+    }
+  };
+
+  const handleSyncFilings = async () => {
+    if (!selectedYear) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/tax-filings/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year: selectedYear })
+      });
+      const data = await res.json();
+      if (data.error) alert(data.error);
+      // Even if there's an error, let's fetch to be safe
+      fetchFilings();
+    } catch (e) {
+      alert("Failed to sync client data");
+      fetchFilings();
+    }
+  };
+
   const updateFiling = async (id: string, updates: Partial<Filing>) => {
     setSavingId(id);
     setFilings(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
@@ -243,12 +282,20 @@ export default function TaxFilingsPage() {
               </button>
             )}
             <button 
-              onClick={fetchFilings}
+              onClick={handleSyncFilings}
               className="p-2 md:p-2.5 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"
-              title="Refresh Data"
+              title="Sync & Refresh Data"
             >
               <RefreshCw size={16} />
             </button>
+            {isAdmin && selectedYear && (
+              <button 
+                onClick={handleDeleteYear}
+                className="hidden md:flex flex-1 md:flex-none bg-red-500 hover:bg-red-600 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-[10px] md:text-sm font-bold shadow-lg shadow-red-500/20 transition-all items-center justify-center whitespace-nowrap"
+              >
+                <Trash2 size={16} className="mr-1.5 md:mr-2" /> Delete Year
+              </button>
+            )}
             <button 
               onClick={handleInitializeYear}
               className="hidden md:flex flex-1 md:flex-none bg-amber-500 hover:bg-amber-600 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-[10px] md:text-sm font-bold shadow-lg shadow-amber-500/20 transition-all items-center justify-center whitespace-nowrap"

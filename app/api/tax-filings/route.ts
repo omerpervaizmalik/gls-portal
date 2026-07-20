@@ -70,3 +70,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const year = searchParams.get("year");
+    if (!year) return NextResponse.json({ error: "Year is required" }, { status: 400 });
+
+    await prisma.filing.deleteMany({
+      where: { year: parseInt(year) }
+    });
+
+    return NextResponse.json({ message: `Tax Year ${year} deleted successfully.` });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
