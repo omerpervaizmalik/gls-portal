@@ -860,7 +860,7 @@ function FilingLogModal({ filing, onClose }: { filing: Filing, onClose: () => vo
   );
 }
 
-function BroadcastSyncModal({ year, onClose }: { year: string, onClose: () => void }) {
+function BroadcastSyncModal({ year, onClose }: { year: number, onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [toAdd, setToAdd] = useState<any[]>([]);
   const [toRemove, setToRemove] = useState<any[]>([]);
@@ -900,7 +900,7 @@ function BroadcastSyncModal({ year, onClose }: { year: string, onClose: () => vo
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400">
               <Loader2 className="animate-spin mb-4" size={32} />
-              <p>Analyzing client changes between {parseInt(year)-1} and {year}...</p>
+              <p>Analyzing client changes between {year - 1} and {year}...</p>
             </div>
           ) : error ? (
             <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 font-medium">
