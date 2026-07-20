@@ -215,14 +215,18 @@ export default function TaxFilingsPage() {
     if (!number) return alert("No mobile number found");
 
     const cleanNumber = number.replace(/\D/g, "");
-    const url = `https://wa.me/${cleanNumber.startsWith('92') ? cleanNumber : '92' + cleanNumber.replace(/^0/, '')}?text=${encodeURIComponent(message)}`;
+    const finalNumber = cleanNumber.startsWith('92') ? cleanNumber : '92' + cleanNumber.replace(/^0/, '');
+    const url = `https://api.whatsapp.com/send/?phone=${finalNumber}&text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
-    
-    fetch(`/api/tax-filings/${filing.id}/logs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ note: "WhatsApp Reminder Sent", stage: "Awaiting Docs", type: "REMINDER" })
-    });
+    try {
+      fetch(`/api/tax-filings/${filing.id}/logs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: "WhatsApp Reminder Sent", stage: "Awaiting Docs", type: "REMINDER" })
+      }).catch(err => console.error("Failed to add WhatsApp log:", err));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const filteredFilings = filings.filter(f => {
@@ -608,14 +612,19 @@ function BulkWhatsAppModal({ selectedFilings, onClose, generateMessage }: { sele
       return handleNext();
     }
     const cleanNumber = number.replace(/\D/g, "");
-    const url = `https://wa.me/${cleanNumber.startsWith('92') ? cleanNumber : '92' + cleanNumber.replace(/^0/, '')}?text=${encodeURIComponent(editingMsg)}`;
+    const finalNumber = cleanNumber.startsWith('92') ? cleanNumber : '92' + cleanNumber.replace(/^0/, '');
+    const url = `https://api.whatsapp.com/send/?phone=${finalNumber}&text=${encodeURIComponent(editingMsg)}`;
     window.open(url, "_blank");
     
-    fetch(`/api/tax-filings/${currentFiling.id}/logs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ note: `WhatsApp: ${editingMsg.substring(0, 50)}...`, stage: "Bulk Reminder", type: "REMINDER" })
-    });
+    try {
+      fetch(`/api/tax-filings/${currentFiling.id}/logs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: `WhatsApp: ${editingMsg.substring(0, 50)}...`, stage: "Bulk Reminder", type: "REMINDER" })
+      }).catch(err => console.error("Failed to add WhatsApp log:", err));
+    } catch(e) {
+      console.error(e);
+    }
     handleNext();
   };
 
