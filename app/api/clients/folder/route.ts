@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
     // First Pass: Match by Number
     for (const category of CATEGORIES) {
-      const categoryPath = path.join(TAX_RETURNS_ROOT, category);
+      const categoryPath = path.join(TAX_RETURNS_ROOT, category).replace(/\\/g, '/');
       try {
         const folders = await storage.listFolder(categoryPath);
         const match = folders.find((f: any) => {
@@ -48,18 +48,26 @@ export async function GET(req: NextRequest) {
           return regex.test(name);
         });
         
-        if (match) return NextResponse.json({ path: match.path });
+        if (match) {
+          // Return human-readable path (categoryPath/folderName) instead of OneDrive item ID
+          // so that permission checks on the files page work correctly for non-admin users
+          const humanPath = `${categoryPath}/${match.name}`;
+          return NextResponse.json({ path: humanPath });
+        }
       } catch (e) {}
     }
 
     // Second Pass: Match by Name (Fallback)
     if (clientName) {
       for (const category of CATEGORIES) {
-        const categoryPath = path.join(TAX_RETURNS_ROOT, category);
+        const categoryPath = path.join(TAX_RETURNS_ROOT, category).replace(/\\/g, '/');
         try {
           const folders = await storage.listFolder(categoryPath);
           const match = folders.find((f: any) => f.folder && f.name.toLowerCase().includes(clientName));
-          if (match) return NextResponse.json({ path: match.path });
+          if (match) {
+            const humanPath = `${categoryPath}/${match.name}`;
+            return NextResponse.json({ path: humanPath });
+          }
         } catch (e) {}
       }
     }
