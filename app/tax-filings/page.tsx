@@ -24,6 +24,7 @@ import {
   X,
   Send,
   User,
+  Users,
   CheckSquare,
   Square,
   Edit3
@@ -65,6 +66,7 @@ export default function TaxFilingsPage() {
   const [selectedFiling, setSelectedFiling] = useState<Filing | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
   const [stageFilter, setStageFilter] = useState("ALL");
 
   const fetchYears = async () => {
@@ -285,6 +287,13 @@ export default function TaxFilingsPage() {
                 <MessageSquare size={16} className="mr-1.5 md:mr-2" /> {selectedIds.size}
               </button>
             )}
+            <button 
+              onClick={() => setShowSyncModal(true)}
+              className="hidden md:flex flex-1 md:flex-none bg-blue-500 hover:bg-blue-600 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-[10px] md:text-sm font-bold shadow-lg shadow-blue-500/20 transition-all items-center justify-center whitespace-nowrap"
+              title="WhatsApp Broadcast Sync Report"
+            >
+              <Users size={16} className="mr-1.5 md:mr-2" /> Broadcast Sync
+            </button>
             <button 
               onClick={handleSyncFilings}
               className="p-2 md:p-2.5 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"
@@ -526,6 +535,13 @@ export default function TaxFilingsPage() {
           selectedFilings={filings.filter(f => selectedIds.has(f.id))}
           onClose={() => { setShowBulkModal(false); setSelectedIds(new Set()); }}
           generateMessage={generateMessage}
+        />
+      )}
+
+      {showSyncModal && selectedYear && (
+        <BroadcastSyncModal 
+          year={selectedYear}
+          onClose={() => setShowSyncModal(false)}
         />
       )}
 
@@ -838,6 +854,114 @@ function FilingLogModal({ filing, onClose }: { filing: Filing, onClose: () => vo
                </div>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BroadcastSyncModal({ year, onClose }: { year: string, onClose: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [toAdd, setToAdd] = useState<any[]>([]);
+  const [toRemove, setToRemove] = useState<any[]>([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/tax-filings/sync-report?year=${year}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) setError(data.error);
+        else {
+          setToAdd(data.toAdd || []);
+          setToRemove(data.toRemove || []);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [year]);
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-6 bg-slate-900 text-white flex justify-between items-center shrink-0">
+          <div>
+            <h2 className="text-xl font-bold flex items-center"><Users className="mr-3" /> WhatsApp Broadcast Sync</h2>
+            <p className="text-slate-400 text-sm mt-1">Manual sync report for your WhatsApp Broadcast list ({year})</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        
+        <div className="p-6 flex-1 overflow-y-auto bg-slate-50">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+              <Loader2 className="animate-spin mb-4" size={32} />
+              <p>Analyzing client changes between {parseInt(year)-1} and {year}...</p>
+            </div>
+          ) : error ? (
+            <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 font-medium">
+              {error}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* To Add Section */}
+              <div className="bg-white border border-emerald-100 rounded-2xl overflow-hidden shadow-sm">
+                <div className="bg-emerald-50 border-b border-emerald-100 p-4">
+                  <h3 className="font-bold text-emerald-800 flex items-center">
+                    <span className="w-6 h-6 rounded-full bg-emerald-200 text-emerald-700 flex items-center justify-center mr-2 text-xs">
+                      {toAdd.length}
+                    </span>
+                    Clients to Add 🟢
+                  </h3>
+                  <p className="text-xs text-emerald-600 mt-1">Add these to your Broadcast List</p>
+                </div>
+                <div className="divide-y divide-slate-50 max-h-[50vh] overflow-y-auto">
+                  {toAdd.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 text-sm italic">No new clients to add.</div>
+                  ) : (
+                    toAdd.map((c, i) => (
+                      <div key={i} className="p-4 hover:bg-slate-50 transition-colors">
+                        <div className="font-semibold text-slate-900">{c.name}</div>
+                        <div className="text-sm font-mono text-slate-500 mt-1">{c.mobileNo || "No number"}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* To Remove Section */}
+              <div className="bg-white border border-rose-100 rounded-2xl overflow-hidden shadow-sm">
+                <div className="bg-rose-50 border-b border-rose-100 p-4">
+                  <h3 className="font-bold text-rose-800 flex items-center">
+                    <span className="w-6 h-6 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center mr-2 text-xs">
+                      {toRemove.length}
+                    </span>
+                    Clients to Remove 🔴
+                  </h3>
+                  <p className="text-xs text-rose-600 mt-1">Remove these from your Broadcast List</p>
+                </div>
+                <div className="divide-y divide-slate-50 max-h-[50vh] overflow-y-auto">
+                  {toRemove.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 text-sm italic">No clients left this year.</div>
+                  ) : (
+                    toRemove.map((c, i) => (
+                      <div key={i} className="p-4 hover:bg-slate-50 transition-colors flex justify-between items-center">
+                        <div>
+                          <div className="font-semibold text-slate-900">{c.name}</div>
+                          <div className="text-sm font-mono text-slate-500 mt-1">{c.mobileNo || "No number"}</div>
+                        </div>
+                        <span className="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-1 rounded">LEFT</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
