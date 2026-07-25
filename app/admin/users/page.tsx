@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Link from 'next/link';
+import { signIn } from 'next-auth/react';
 import { 
   Users, 
   UserPlus, 
@@ -15,7 +16,8 @@ import {
   Loader2,
   Trash2,
   Pencil,
-  User
+  User,
+  LogIn
 } from 'lucide-react';
 
 interface User {
@@ -145,6 +147,25 @@ export default function AdminUsers() {
     }
   };
 
+  const handleImpersonate = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to impersonate ${userName}?`)) return;
+    
+    try {
+      const result = await signIn('impersonate', {
+        userId,
+        redirect: false
+      });
+      
+      if (result?.error) {
+        setError(result.error);
+      } else {
+        window.location.href = '/';
+      }
+    } catch (err) {
+      setError('Failed to impersonate user');
+    }
+  };
+
   return (
     <div className="flex h-full w-full bg-slate-50">
       <Sidebar />
@@ -253,6 +274,13 @@ export default function AdminUsers() {
                           title="Edit Account Details"
                         >
                           <Pencil className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleImpersonate(user.id, user.name || user.email)}
+                          className="text-slate-400 hover:text-green-500 p-2 transition-colors mr-1"
+                          title="Impersonate User"
+                        >
+                          <LogIn className="h-4 w-4" />
                         </button>
                         <button 
                           onClick={() => handleDeleteUser(user.id, user.name || user.email)}
