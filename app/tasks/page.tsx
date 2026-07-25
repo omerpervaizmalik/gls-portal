@@ -124,6 +124,7 @@ export default function TaskManagerPage() {
             userTasks.forEach((t: any) => {
               reminderText += `- ${t.title}\n`;
             });
+            reminderText += `\n*GLS Technical Team*`;
             
             const encodedText = encodeURIComponent(reminderText);
             

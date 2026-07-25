@@ -76,7 +76,7 @@ export default function NewTaskModal({ onClose, onSuccess }: NewTaskModalProps) 
           cleanNumber = cleanNumber.substring(2);
         }
 
-        const text = `*New Task Assigned at your GLS Portal. Please see the details on APP.*\n\n*Task:* ${formData.title}\n*Priority:* ${formData.priority}\n*Deadline:* ${formData.deadline ? new Date(formData.deadline).toLocaleDateString() : 'No deadline'}\n*Description:* ${formData.description}`;
+        const text = `*New Task Assigned at your GLS Portal. Please see the details on APP.*\n\n*Task:* ${formData.title}\n*Priority:* ${formData.priority}\n*Deadline:* ${formData.deadline ? new Date(formData.deadline).toLocaleDateString() : 'No deadline'}\n*Description:* ${formData.description}\n\n*GLS Technical Team*`;
         const encodedText = encodeURIComponent(text);
         
         if (cleanNumber) {
