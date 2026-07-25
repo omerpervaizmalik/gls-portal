@@ -21,7 +21,8 @@ import {
   Trash2,
   RotateCcw,
   X,
-  Share2
+  Share2,
+  FileText
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -227,6 +228,33 @@ function FileArchiveContent() {
     }
   };
 
+  const handleCreateTextFile = async () => {
+    let name = prompt("Enter text file name:");
+    if (!name) return;
+    if (!name.toLowerCase().endsWith('.txt')) {
+      name += '.txt';
+    }
+    
+    try {
+      const formData = new FormData();
+      const file = new File([''], name, { type: 'text/plain' });
+      formData.append('file', file);
+      formData.append('targetFolderPath', path);
+
+      const res = await fetch('/api/storage-gateway', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Failed to create text file');
+      
+      // Refresh logic
+      window.location.reload();
+    } catch (e) {
+      alert("Error creating text file");
+    }
+  };
+
   const handleRename = async (oldPath: string) => {
     const newName = prompt("Enter new name:");
     if (!newName) return;
@@ -310,6 +338,14 @@ function FileArchiveContent() {
               </button>
             </div>
             
+            <button 
+              onClick={handleCreateTextFile}
+              className="hidden md:flex flex-1 md:flex-none text-slate-600 hover:bg-slate-100 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-all items-center justify-center"
+            >
+              <FileText className="mr-1.5 h-4 w-4" />
+              Text File
+            </button>
+
             <button 
               onClick={handleCreateFolder}
               className="hidden md:flex flex-1 md:flex-none text-slate-600 hover:bg-slate-100 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-all items-center justify-center"
@@ -552,6 +588,12 @@ function FileArchiveContent() {
 
         {/* Mobile Floating Action Buttons */}
         <div className="md:hidden fixed bottom-6 right-6 flex flex-col space-y-3 z-[90]">
+          <button
+            onClick={handleCreateTextFile}
+            className="w-12 h-12 bg-white text-slate-700 border border-slate-200 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+          >
+            <FileText size={20} />
+          </button>
           <button
             onClick={handleCreateFolder}
             className="w-12 h-12 bg-white text-slate-700 border border-slate-200 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
