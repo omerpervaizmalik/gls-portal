@@ -78,7 +78,8 @@ export default function TaskManagerPage() {
     if (selectedTasks.length === 0) return;
     setSendingBulk(true);
     try {
-      let reminderText = `*Bulk Task Reminders*%0A`;
+      // Group tasks by assignee to send one WhatsApp message per assignee
+      const tasksByUser: Record<string, any[]> = {};
       let count = 0;
 
       // For each selected task, create a reminder for the assigned user
@@ -86,7 +87,10 @@ export default function TaskManagerPage() {
         const task: any = filteredTasks.find(t => t.id === taskId);
         if (!task || !task.assignedToId) continue;
 
-        reminderText += `-%20${task.title}%20(${task.assignedTo?.name || 'Unassigned'})%0A`;
+        if (!tasksByUser[task.assignedToId]) {
+          tasksByUser[task.assignedToId] = [];
+        }
+        tasksByUser[task.assignedToId].push(task);
         count++;
 
         await fetch(`/api/tasks/${taskId}/reminders`, {
@@ -99,9 +103,27 @@ export default function TaskManagerPage() {
         });
       }
       
-      if (count > 0) {
-        if (confirm(`Bulk reminders sent for ${count} tasks. Do you also want to send a summary via WhatsApp?`)) {
-          window.open(`https://wa.me/?text=${reminderText}`, '_blank');
+      const userIds = Object.keys(tasksByUser);
+      if (userIds.length > 0) {
+        if (confirm(`Bulk reminders sent for ${count} tasks. Do you also want to send WhatsApp summaries to the assignees?`)) {
+          userIds.forEach(userId => {
+            const userTasks = tasksByUser[userId];
+            const assignee = userTasks[0].assignedTo;
+            
+            const number = assignee?.profile?.whatsappNumber || assignee?.profile?.phoneNumber || "";
+            const cleanNumber = number.replace(/[^0-9]/g, '');
+            
+            let reminderText = `*Reminder Messages For Pending Tasks at your GLS Portal. Please see the details on APP. Reply As Soon As Possible.*%0A%0A`;
+            userTasks.forEach((t: any) => {
+              reminderText += `- ${t.title}%0A`;
+            });
+            
+            if (cleanNumber) {
+              window.open(`https://wa.me/${cleanNumber}?text=${reminderText}`, '_blank');
+            } else {
+              window.open(`https://wa.me/?text=${reminderText}`, '_blank');
+            }
+          });
         } else {
           alert(`Bulk reminders sent for ${count} tasks.`);
         }

@@ -65,8 +65,17 @@ export default function NewTaskModal({ onClose, onSuccess }: NewTaskModalProps) 
       }
 
       if (notifyWhatsapp && formData.assignedToId) {
-        const text = `*New Task Assigned*%0A*Task:* ${formData.title}%0A*Priority:* ${formData.priority}%0A*Deadline:* ${formData.deadline ? new Date(formData.deadline).toLocaleDateString() : 'No deadline'}%0A*Description:* ${formData.description}%0A%0APlease log in to the portal to view details.`;
-        window.open(`https://wa.me/?text=${text}`, '_blank');
+        const assignee = users.find(u => u.id === formData.assignedToId);
+        const number = assignee?.profile?.whatsappNumber || assignee?.profile?.phoneNumber || "";
+        const cleanNumber = number.replace(/[^0-9]/g, '');
+
+        const text = `*New Task Assigned at your GLS Portal. Please see the details on APP.*%0A%0A*Task:* ${formData.title}%0A*Priority:* ${formData.priority}%0A*Deadline:* ${formData.deadline ? new Date(formData.deadline).toLocaleDateString() : 'No deadline'}%0A*Description:* ${formData.description}`;
+        
+        if (cleanNumber) {
+          window.open(`https://wa.me/${cleanNumber}?text=${text}`, '_blank');
+        } else {
+          window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
       }
 
       onSuccess();

@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     const tasks = await prisma.task.findMany({
       where,
       include: {
-        assignedTo: { select: { name: true, email: true } },
+        assignedTo: { select: { name: true, email: true, profile: { select: { whatsappNumber: true, phoneNumber: true } } } },
         createdBy: { select: { name: true, email: true } },
         matter: {
           include: { client: { select: { name: true } } }

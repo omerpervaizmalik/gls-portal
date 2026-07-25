@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const users = await prisma.user.findMany({
-      include: { permissions: true },
+      include: { permissions: true, profile: true },
     });
     return NextResponse.json(users);
   } catch (error: any) {
