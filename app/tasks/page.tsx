@@ -78,10 +78,16 @@ export default function TaskManagerPage() {
     if (selectedTasks.length === 0) return;
     setSendingBulk(true);
     try {
+      let reminderText = `*Bulk Task Reminders*%0A`;
+      let count = 0;
+
       // For each selected task, create a reminder for the assigned user
       for (const taskId of selectedTasks) {
         const task: any = filteredTasks.find(t => t.id === taskId);
         if (!task || !task.assignedToId) continue;
+
+        reminderText += `-%20${task.title}%20(${task.assignedTo?.name || 'Unassigned'})%0A`;
+        count++;
 
         await fetch(`/api/tasks/${taskId}/reminders`, {
           method: 'POST',
@@ -92,7 +98,17 @@ export default function TaskManagerPage() {
           })
         });
       }
-      alert(`Bulk reminders sent for ${selectedTasks.length} tasks.`);
+      
+      if (count > 0) {
+        if (confirm(`Bulk reminders sent for ${count} tasks. Do you also want to send a summary via WhatsApp?`)) {
+          window.open(`https://wa.me/?text=${reminderText}`, '_blank');
+        } else {
+          alert(`Bulk reminders sent for ${count} tasks.`);
+        }
+      } else {
+        alert("No valid tasks with assignees selected.");
+      }
+      
       setSelectedTasks([]);
     } catch (err) {
       alert("Error sending bulk reminders");

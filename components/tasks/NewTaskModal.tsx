@@ -13,6 +13,7 @@ export default function NewTaskModal({ onClose, onSuccess }: NewTaskModalProps) 
   const [error, setError] = useState('');
   const [users, setUsers] = useState<any[]>([]);
   const [matters, setMatters] = useState<any[]>([]);
+  const [notifyWhatsapp, setNotifyWhatsapp] = useState(true);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -61,6 +62,11 @@ export default function NewTaskModal({ onClose, onSuccess }: NewTaskModalProps) 
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || 'Failed to create task');
+      }
+
+      if (notifyWhatsapp && formData.assignedToId) {
+        const text = `*New Task Assigned*%0A*Task:* ${formData.title}%0A*Priority:* ${formData.priority}%0A*Deadline:* ${formData.deadline ? new Date(formData.deadline).toLocaleDateString() : 'No deadline'}%0A*Description:* ${formData.description}%0A%0APlease log in to the portal to view details.`;
+        window.open(`https://wa.me/?text=${text}`, '_blank');
       }
 
       onSuccess();
@@ -160,6 +166,19 @@ export default function NewTaskModal({ onClose, onSuccess }: NewTaskModalProps) 
                 {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
             </div>
+          </div>
+
+          <div className="flex items-center space-x-2 mt-2">
+            <input
+              type="checkbox"
+              id="notifyWhatsapp"
+              checked={notifyWhatsapp}
+              onChange={(e) => setNotifyWhatsapp(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500/20"
+            />
+            <label htmlFor="notifyWhatsapp" className="text-xs text-slate-400">
+              Notify Assignee via WhatsApp
+            </label>
           </div>
 
           {formData.assignedToId && formData.matterId && (

@@ -36,12 +36,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       }
     });
 
-    // Create Notification for the reminder
+    const task = await prisma.task.findUnique({ where: { id: params.id } });
+
+    // Create Notification for the assigned user (or self if unassigned)
+    const targetUserId = task?.assignedToId || session.user.id;
+
     await prisma.notification.create({
       data: {
-        userId: session.user.id,
-        title: "Reminder Set",
-        message: `Reminder set for: ${new Date(remindAt).toLocaleString()}. Note: ${note || 'No note'}`,
+        userId: targetUserId,
+        title: "Reminder",
+        message: `Reminder set for task "${task?.title || 'Unknown'}": ${note || 'No note'}`,
         type: "REMINDER"
       }
     });
