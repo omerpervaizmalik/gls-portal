@@ -69,12 +69,13 @@ export default function NewTaskModal({ onClose, onSuccess }: NewTaskModalProps) 
         const number = assignee?.profile?.whatsappNumber || assignee?.profile?.phoneNumber || "";
         const cleanNumber = number.replace(/[^0-9]/g, '');
 
-        const text = `*New Task Assigned at your GLS Portal. Please see the details on APP.*%0A%0A*Task:* ${formData.title}%0A*Priority:* ${formData.priority}%0A*Deadline:* ${formData.deadline ? new Date(formData.deadline).toLocaleDateString() : 'No deadline'}%0A*Description:* ${formData.description}`;
+        const text = `*New Task Assigned at your GLS Portal. Please see the details on APP.*\n\n*Task:* ${formData.title}\n*Priority:* ${formData.priority}\n*Deadline:* ${formData.deadline ? new Date(formData.deadline).toLocaleDateString() : 'No deadline'}\n*Description:* ${formData.description}`;
+        const encodedText = encodeURIComponent(text);
         
         if (cleanNumber) {
-          window.open(`https://wa.me/${cleanNumber}?text=${text}`, '_blank');
+          window.open(`https://wa.me/${cleanNumber}?text=${encodedText}`, '_blank');
         } else {
-          window.open(`https://wa.me/?text=${text}`, '_blank');
+          window.open(`https://wa.me/?text=${encodedText}`, '_blank');
         }
       }
 

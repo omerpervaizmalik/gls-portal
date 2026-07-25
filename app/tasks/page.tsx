@@ -113,15 +113,17 @@ export default function TaskManagerPage() {
             const number = assignee?.profile?.whatsappNumber || assignee?.profile?.phoneNumber || "";
             const cleanNumber = number.replace(/[^0-9]/g, '');
             
-            let reminderText = `*Reminder Messages For Pending Tasks at your GLS Portal. Please see the details on APP. Reply As Soon As Possible.*%0A%0A`;
+            let reminderText = `*Reminder Messages For Pending Tasks at your GLS Portal. Please see the details on APP. Reply As Soon As Possible.*\n\n`;
             userTasks.forEach((t: any) => {
-              reminderText += `- ${t.title}%0A`;
+              reminderText += `- ${t.title}\n`;
             });
             
+            const encodedText = encodeURIComponent(reminderText);
+            
             if (cleanNumber) {
-              window.open(`https://wa.me/${cleanNumber}?text=${reminderText}`, '_blank');
+              window.open(`https://wa.me/${cleanNumber}?text=${encodedText}`, '_blank');
             } else {
-              window.open(`https://wa.me/?text=${reminderText}`, '_blank');
+              window.open(`https://wa.me/?text=${encodedText}`, '_blank');
             }
           });
         } else {
