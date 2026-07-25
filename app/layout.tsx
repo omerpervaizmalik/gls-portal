@@ -9,6 +9,7 @@ import MobileTopBar from "@/components/MobileTopBar";
 import BottomNav from "@/components/BottomNav";
 import GlobalNotificationManager from "@/components/GlobalNotificationManager";
 import GlobalActivityTracker from "@/components/GlobalActivityTracker";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
 import { initMobileAppStyling, isNative } from "@/lib/platform";
 import React from "react";
 import { usePathname } from "next/navigation";
@@ -24,6 +25,7 @@ function NativeLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0f1e', overflow: 'hidden' }}>
+      <ImpersonationBanner />
       {/* Show back-bar on every page except the icon grid home */}
       {!isHome && !isLogin && <MobileTopBar />}
       <div 
@@ -82,6 +84,7 @@ export default function RootLayout({
                 <NativeLayout>{children}</NativeLayout>
               ) : (
                 <div className="flex flex-col h-screen overflow-hidden">
+                  <ImpersonationBanner />
                   <div className="flex flex-1 overflow-hidden">
                     {children}
                   </div>

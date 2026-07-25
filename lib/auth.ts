@@ -78,6 +78,36 @@ export const authOptions: AuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          isImpersonating: true,
+          originalAdminId: decoded.id
+        } as any;
+      }
+    }),
+    CredentialsProvider({
+      id: "stop_impersonating",
+      name: "Stop Impersonating",
+      credentials: {},
+      async authorize() {
+        const cookieStore = cookies();
+        const sessionToken = cookieStore.get('next-auth.session-token')?.value || cookieStore.get('__Secure-next-auth.session-token')?.value;
+        if (!sessionToken) throw new Error("No session");
+        
+        const decoded = await decode({ token: sessionToken, secret: process.env.NEXTAUTH_SECRET! });
+        if (!decoded?.isImpersonating || !decoded?.originalAdminId) {
+          throw new Error("Not impersonating");
+        }
+        
+        const adminUser = await prisma.user.findUnique({
+          where: { id: decoded.originalAdminId as string }
+        });
+        
+        if (!adminUser) throw new Error("Admin not found");
+        
+        return {
+          id: adminUser.id,
+          email: adminUser.email,
+          name: adminUser.name,
+          role: adminUser.role,
         };
       }
     })
@@ -85,15 +115,26 @@ export const authOptions: AuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role;
+        token.role = (user as any).role;
         token.id = user.id;
+        if ((user as any).isImpersonating) {
+          token.isImpersonating = true;
+          token.originalAdminId = (user as any).originalAdminId;
+        } else {
+          delete token.isImpersonating;
+          delete token.originalAdminId;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.role = token.role;
-        session.user.id = token.id;
+        (session.user as any).role = token.role;
+        (session.user as any).id = token.id;
+        if (token.isImpersonating) {
+          (session.user as any).isImpersonating = true;
+          (session.user as any).originalAdminId = token.originalAdminId;
+        }
       }
       return session;
     }
