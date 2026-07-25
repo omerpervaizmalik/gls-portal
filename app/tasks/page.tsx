@@ -111,7 +111,14 @@ export default function TaskManagerPage() {
             const assignee = userTasks[0].assignedTo;
             
             const number = assignee?.profile?.whatsappNumber || assignee?.profile?.phoneNumber || "";
-            const cleanNumber = number.replace(/[^0-9]/g, '');
+            let cleanNumber = number.replace(/[^0-9]/g, '');
+            
+            // Format Pakistani local numbers to international format
+            if (cleanNumber.startsWith('0') && cleanNumber.length === 11) {
+              cleanNumber = '92' + cleanNumber.substring(1);
+            } else if (cleanNumber.startsWith('00')) {
+              cleanNumber = cleanNumber.substring(2);
+            }
             
             let reminderText = `*Reminder Messages For Pending Tasks at your GLS Portal. Please see the details on APP. Reply As Soon As Possible.*\n\n`;
             userTasks.forEach((t: any) => {
@@ -121,9 +128,9 @@ export default function TaskManagerPage() {
             const encodedText = encodeURIComponent(reminderText);
             
             if (cleanNumber) {
-              window.open(`https://wa.me/${cleanNumber}?text=${encodedText}`, '_blank');
+              window.open(`https://api.whatsapp.com/send?phone=${cleanNumber}&text=${encodedText}`, '_blank');
             } else {
-              window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+              window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
             }
           });
         } else {

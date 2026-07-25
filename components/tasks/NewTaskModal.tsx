@@ -67,15 +67,22 @@ export default function NewTaskModal({ onClose, onSuccess }: NewTaskModalProps) 
       if (notifyWhatsapp && formData.assignedToId) {
         const assignee = users.find(u => u.id === formData.assignedToId);
         const number = assignee?.profile?.whatsappNumber || assignee?.profile?.phoneNumber || "";
-        const cleanNumber = number.replace(/[^0-9]/g, '');
+        let cleanNumber = number.replace(/[^0-9]/g, '');
+
+        // Format Pakistani local numbers to international format
+        if (cleanNumber.startsWith('0') && cleanNumber.length === 11) {
+          cleanNumber = '92' + cleanNumber.substring(1);
+        } else if (cleanNumber.startsWith('00')) {
+          cleanNumber = cleanNumber.substring(2);
+        }
 
         const text = `*New Task Assigned at your GLS Portal. Please see the details on APP.*\n\n*Task:* ${formData.title}\n*Priority:* ${formData.priority}\n*Deadline:* ${formData.deadline ? new Date(formData.deadline).toLocaleDateString() : 'No deadline'}\n*Description:* ${formData.description}`;
         const encodedText = encodeURIComponent(text);
         
         if (cleanNumber) {
-          window.open(`https://wa.me/${cleanNumber}?text=${encodedText}`, '_blank');
+          window.open(`https://api.whatsapp.com/send?phone=${cleanNumber}&text=${encodedText}`, '_blank');
         } else {
-          window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+          window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
         }
       }
 
