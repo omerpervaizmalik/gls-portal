@@ -161,6 +161,7 @@ model Filing {
   isContacted   Boolean   @default(false)
   docsObtained  Boolean   @default(false)
   isWorking     Boolean   @default(false)
+  isDraftReady  Boolean   @default(false)
   isFiled       Boolean   @default(false)
   isBilled      Boolean   @default(false)
   isPaid        Boolean   @default(false)

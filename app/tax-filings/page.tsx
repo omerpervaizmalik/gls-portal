@@ -39,6 +39,7 @@ interface Filing {
   isContacted: boolean;
   docsObtained: boolean;
   isWorking: boolean;
+  isDraftReady: boolean;
   isFiled: boolean;
   isBilled: boolean;
   isPaid: boolean;
@@ -239,6 +240,7 @@ export default function TaxFilingsPage() {
     if (stageFilter === "CONTACTED") return matchesSearch && f.isContacted;
     if (stageFilter === "DOCS") return matchesSearch && f.docsObtained;
     if (stageFilter === "WORKING") return matchesSearch && f.isWorking;
+    if (stageFilter === "DRAFT_READY") return matchesSearch && f.isDraftReady;
     if (stageFilter === "FILED") return matchesSearch && f.isFiled;
     if (stageFilter === "BILLED") return matchesSearch && f.isBilled;
     if (stageFilter === "PAID") return matchesSearch && f.isPaid;
@@ -351,6 +353,7 @@ export default function TaxFilingsPage() {
                 <option value="CONTACTED">CONTACTED</option>
                 <option value="DOCS">DOCS OBTAINED</option>
                 <option value="WORKING">WORKING</option>
+                <option value="DRAFT_READY">DRAFT READY</option>
                 <option value="FILED">FILED</option>
                 {isAdmin && (
                   <>
@@ -389,6 +392,7 @@ export default function TaxFilingsPage() {
                 <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Contacted</th>
                 <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Docs</th>
                 <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Working</th>
+                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Draft Ready</th>
                 <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Filed</th>
                 {isAdmin && (
                   <>
@@ -402,9 +406,9 @@ export default function TaxFilingsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
-                <tr><td colSpan={11} className="py-20 text-center text-slate-400"><Loader2 className="animate-spin mx-auto mb-2" /> Loading records...</td></tr>
+                <tr><td colSpan={12} className="py-20 text-center text-slate-400"><Loader2 className="animate-spin mx-auto mb-2" /> Loading records...</td></tr>
               ) : filteredFilings.length === 0 ? (
-                <tr><td colSpan={11} className="py-20 text-center text-slate-400">No records found.</td></tr>
+                <tr><td colSpan={12} className="py-20 text-center text-slate-400">No records found.</td></tr>
               ) : filteredFilings.map((filing) => (
                 <tr 
                   key={filing.id} 
@@ -453,6 +457,12 @@ export default function TaxFilingsPage() {
                     onChange={(val) => updateFiling(filing.id, { isWorking: val })} 
                     activeColor="bg-indigo-500"
                     icon={Clock}
+                  />
+                  <WorkflowCell 
+                    checked={filing.isDraftReady} 
+                    onChange={(val) => updateFiling(filing.id, { isDraftReady: val })} 
+                    activeColor="bg-cyan-500"
+                    icon={CheckSquare}
                   />
                   <WorkflowCell 
                     checked={filing.isFiled} 
