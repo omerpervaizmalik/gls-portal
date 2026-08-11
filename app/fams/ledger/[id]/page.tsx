@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Download, Printer, Folder } from "lucide-react";
 import { format } from "date-fns";
 import { LedgerControls } from "../LedgerControls";
 import { EntryActions } from "../EntryActions";
+import { AddDisbursementButton } from "../AddDisbursementButton";
 
 export default async function ClientLedgerPage({ params }: { params: { id: string } }) {
   const client = await prisma.client.findUnique({
@@ -121,7 +122,7 @@ export default async function ClientLedgerPage({ params }: { params: { id: strin
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
               <h3 className="font-semibold text-slate-800">Disbursement Log</h3>
-              <button className="text-amber-600 hover:text-amber-700 text-sm font-medium">Add</button>
+              <AddDisbursementButton clientId={client.id} />
             </div>
             
             <div className="space-y-4">
