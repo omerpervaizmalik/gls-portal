@@ -83,9 +83,9 @@ export default function RootLayout({
               {native ? (
                 <NativeLayout>{children}</NativeLayout>
               ) : (
-                <div className="flex flex-col h-screen overflow-hidden">
+                <div className="flex flex-col h-screen overflow-hidden print:h-auto print:overflow-visible print:block">
                   <ImpersonationBanner />
-                  <div className="flex flex-1 overflow-hidden">
+                  <div className="flex flex-1 overflow-hidden print:overflow-visible print:block">
                     {children}
                   </div>
                 </div>
