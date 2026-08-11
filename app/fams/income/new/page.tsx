@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import { revalidatePath } from "next/cache";
 import CategorySelect from "@/components/CategorySelect";
+import { ClientOrWalkinSelect } from "./ClientOrWalkinSelect";
 
 export default async function NewIncomePage() {
   const clients = await prisma.$queryRaw`
@@ -20,6 +21,7 @@ export default async function NewIncomePage() {
     const dateStr = formData.get('date') as string;
     const clientId = formData.get('clientId') as string;
     const description = formData.get('description') as string;
+    const walkinName = formData.get('walkinName') as string;
 
     if (!amountStr || !serviceType || !dateStr) {
       throw new Error("Missing required fields");
@@ -28,13 +30,34 @@ export default async function NewIncomePage() {
     const amount = parseFloat(amountStr);
     const date = new Date(dateStr);
 
-    // 1. Create the Income Record for the firm's consolidated view
+    // 1. Generate an Invoice first
+    const lastInvoice = await prisma.invoice.findFirst({
+      orderBy: { createdAt: 'desc' }
+    });
+    const lastInvoiceNo = lastInvoice?.invoiceNo || "INV-000000";
+    const nextInvoiceNumber = (parseInt(lastInvoiceNo.split("-")[1] || "0") + 1).toString().padStart(6, '0');
+    
+    const invoice = await prisma.invoice.create({
+      data: {
+        invoiceNo: `INV-${nextInvoiceNumber}`,
+        clientId: clientId || null,
+        walkinName: (!clientId && walkinName) ? walkinName : null,
+        date,
+        totalAmount: amount,
+        items: [{ description: serviceType, amount }],
+        status: "ISSUED"
+      }
+    });
+
+    // 2. Create the Income Record for the firm's consolidated view
     await prisma.incomeRecord.create({
       data: {
         amount,
         serviceType,
         date,
         clientId: clientId || null,
+        walkinName: (!clientId && walkinName) ? walkinName : null,
+        invoiceId: invoice.id
       }
     });
 
@@ -83,20 +106,7 @@ export default async function NewIncomePage() {
               />
             </div>
             
-            <div>
-              <label htmlFor="clientId" className="block text-sm font-medium text-slate-700 mb-1">Client (Optional)</label>
-              <select 
-                id="clientId" 
-                name="clientId" 
-                className="w-full px-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-              >
-                <option value="">Walk-in / No Client Selected</option>
-                {clients.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.cfNo})</option>
-                ))}
-              </select>
-              <p className="text-xs text-slate-500 mt-1">If selected, this payment will automatically deduct from their ledger balance.</p>
-            </div>
+            <ClientOrWalkinSelect clients={clients} />
 
             <div>
               <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-1">Amount Received (Rs) *</label>

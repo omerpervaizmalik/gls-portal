@@ -248,8 +248,9 @@ model LedgerEntry {
 model Invoice {
   id          String   @id @default(cuid())
   invoiceNo   String   @unique
-  clientId    String
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId    String?
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  walkinName  String?
   date        DateTime
   items       Json // Array of { description: string, amount: number }
   totalAmount Float
@@ -257,6 +258,8 @@ model Invoice {
 
   ledgerEntryId String?      @unique
   ledgerEntry   LedgerEntry? @relation(fields: [ledgerEntryId], references: [id], onDelete: SetNull)
+  
+  incomeRecord  IncomeRecord?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -293,6 +296,10 @@ model IncomeRecord {
   date        DateTime
   clientId    String?
   client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  walkinName  String?
+
+  invoiceId   String?  @unique
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

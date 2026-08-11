@@ -1,6 +1,6 @@
 import React from "react";
 import { prisma } from "@/lib/prisma";
-import { TrendingUp, Filter, Plus, PieChart } from "lucide-react";
+import { TrendingUp, Filter, Plus, PieChart, FileText } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import DeleteIncomeButton from "@/components/DeleteIncomeButton";
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function IncomeRegisterPage() {
   const incomeRecords = await prisma.incomeRecord.findMany({
-    include: { client: true },
+    include: { client: true, invoice: true },
     orderBy: { date: 'desc' }
   });
 
@@ -88,8 +88,13 @@ export default async function IncomeRegisterPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-slate-700">
                         {format(new Date(record.date), 'MMM dd, yyyy')}
                       </td>
-                      <td className="px-6 py-4 font-medium text-slate-800">
-                        {record.client?.name || "Walk-in / Unknown"}
+                      <td className="px-6 py-4 font-medium text-slate-800 flex items-center">
+                        {record.client?.name || record.walkinName || "Walk-in / Unknown"}
+                        {record.invoiceId && (
+                           <Link href={`/fams/invoice/new?id=${record.invoiceId}`} className="ml-2 text-amber-500 hover:text-amber-600" title="View Invoice">
+                             <FileText className="w-4 h-4" />
+                           </Link>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
@@ -99,7 +104,7 @@ export default async function IncomeRegisterPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-emerald-600">
                         + {record.amount.toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <td className="px-6 py-4 whitespace-nowrap text-right flex items-center justify-end space-x-3">
                         <DeleteIncomeButton id={record.id} />
                       </td>
                     </tr>

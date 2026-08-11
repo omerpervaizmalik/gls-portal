@@ -81,8 +81,8 @@ export default function InvoiceListPage() {
                     <td className="px-6 py-4 font-bold text-slate-700">{invoice.invoiceNo}</td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="font-medium text-slate-800">{invoice.client?.name}</span>
-                        <span className="text-[10px] text-slate-400">{invoice.client?.cfNo}</span>
+                        <span className="font-medium text-slate-800">{invoice.client?.name || invoice.walkinName || "Walk-in"}</span>
+                        <span className="text-[10px] text-slate-400">{invoice.client?.cfNo || "WALK-IN"}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-600">

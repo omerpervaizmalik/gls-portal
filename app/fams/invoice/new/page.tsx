@@ -51,6 +51,9 @@ function InvoiceGeneratorContent() {
                 if (foundClient) {
                   setClientData(foundClient);
                   setClientSearch(foundClient.name);
+                } else if (inv.walkinName) {
+                  setClientData({ name: inv.walkinName, cfNo: "WALK-IN", address: "Walk-in Client" });
+                  setClientSearch(inv.walkinName);
                 }
               }
             });
@@ -85,7 +88,7 @@ function InvoiceGeneratorContent() {
   const totalAmount = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const handleSaveToLedger = async () => {
-    if (!clientData) {
+    if (!clientData && !invoiceId) { // Allow saving updates to walkin invoices
       alert("Please select a client first before saving.");
       return;
     }
