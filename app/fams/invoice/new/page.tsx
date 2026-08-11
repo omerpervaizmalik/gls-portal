@@ -166,7 +166,7 @@ function InvoiceGeneratorContent() {
         @media print {
           @page {
             size: A4;
-            margin: 10mm;
+            margin: 0;
           }
           body * {
             visibility: hidden;
