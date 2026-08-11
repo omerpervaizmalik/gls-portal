@@ -155,6 +155,9 @@ function InvoiceGeneratorContent() {
     c.cfNo.toLowerCase().includes(clientSearch.toLowerCase())
   ).slice(0, 5);
 
+  // Dynamic sizing to force single page print
+  const isCompact = items.length > 4;
+  const isVeryCompact = items.length > 8;
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 font-sans">
@@ -177,8 +180,9 @@ function InvoiceGeneratorContent() {
             top: 0;
             width: 100%;
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 10mm !important;
             box-shadow: none !important;
+            min-height: auto !important;
           }
           ::-webkit-scrollbar {
             display: none;
@@ -248,10 +252,10 @@ function InvoiceGeneratorContent() {
       </div>
 
       {/* Printable A4 Document Layout */}
-      <div id="printable-invoice" className="max-w-[210mm] mx-auto bg-white min-h-[297mm] shadow-2xl p-8 flex flex-col relative">
+      <div id="printable-invoice" className={`max-w-[210mm] mx-auto bg-white min-h-[297mm] print:min-h-0 shadow-2xl p-8 print:p-0 flex flex-col relative`}>
         
         {/* Letterhead Header */}
-        <header className="border-b-2 border-amber-500 pb-6 mb-6 flex flex-col md:flex-row justify-between items-start space-y-4 md:space-y-0">
+        <header className={`border-b-2 border-amber-500 flex flex-col md:flex-row justify-between items-start ${isVeryCompact ? 'pb-2 mb-2 space-y-2' : isCompact ? 'pb-4 mb-4 space-y-3' : 'pb-6 mb-6 space-y-4'} md:space-y-0`}>
           <div className="flex items-center space-x-4">
             <img src="/logo.jpeg" alt="Get Legal Solution Logo" className="h-14 w-auto object-contain" />
             <div>
@@ -271,12 +275,12 @@ function InvoiceGeneratorContent() {
         </header>
 
         {/* Invoice Title */}
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-black text-slate-200 tracking-widest uppercase">Invoice</h2>
+        <div className={`text-center ${isVeryCompact ? 'mb-2' : isCompact ? 'mb-4' : 'mb-6'}`}>
+          <h2 className={`${isVeryCompact ? 'text-lg' : isCompact ? 'text-xl' : 'text-2xl'} font-black text-slate-200 tracking-widest uppercase`}>Invoice</h2>
         </div>
 
         {/* Client & Invoice Meta */}
-        <div className="flex justify-between items-start mb-8 text-sm">
+        <div className={`flex justify-between items-start text-sm ${isVeryCompact ? 'mb-2' : isCompact ? 'mb-4' : 'mb-8'}`}>
           <div className="w-1/2">
             <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Billed To</h3>
             
@@ -367,27 +371,27 @@ function InvoiceGeneratorContent() {
         </div>
 
         {/* Invoice Items Table */}
-        <div className="mb-8">
+        <div className={`${isVeryCompact ? 'mb-2' : isCompact ? 'mb-4' : 'mb-8'}`}>
           <table className="w-full text-left border-collapse text-sm">
             <thead>
               <tr className="border-b-2 border-slate-800 text-slate-800">
-                <th className="py-2 px-2 text-xs font-bold uppercase tracking-wider w-12 text-center">No.</th>
-                <th className="py-2 px-2 text-xs font-bold uppercase tracking-wider">Description of Service</th>
-                <th className="py-2 px-2 text-xs font-bold uppercase tracking-wider text-right w-36">Amount (Rs.)</th>
+                <th className={`${isVeryCompact ? 'py-1 text-[10px]' : isCompact ? 'py-1.5 text-xs' : 'py-2 text-xs'} px-2 font-bold uppercase tracking-wider w-12 text-center`}>No.</th>
+                <th className={`${isVeryCompact ? 'py-1 text-[10px]' : isCompact ? 'py-1.5 text-xs' : 'py-2 text-xs'} px-2 font-bold uppercase tracking-wider`}>Description of Service</th>
+                <th className={`${isVeryCompact ? 'py-1 text-[10px]' : isCompact ? 'py-1.5 text-xs' : 'py-2 text-xs'} px-2 font-bold uppercase tracking-wider text-right w-36`}>Amount (Rs.)</th>
                 <th className="w-8 print:hidden"></th>
               </tr>
             </thead>
             <tbody>
               {items.map((item, index) => (
                 <tr key={item.id} className="border-b border-slate-200">
-                  <td className="py-2 px-2 text-center text-slate-500 font-bold">{index + 1}</td>
-                  <td className="py-2 px-2">
+                  <td className={`${isVeryCompact ? 'py-1 text-[10px]' : isCompact ? 'py-1.5 text-xs' : 'py-2'} px-2 text-center text-slate-500 font-bold`}>{index + 1}</td>
+                  <td className={`${isVeryCompact ? 'py-1' : isCompact ? 'py-1.5' : 'py-2'} px-2`}>
                     <input 
                       type="text" 
                       value={item.description} 
                       onChange={e => updateItem(item.id, 'description', e.target.value)}
                       placeholder="Type service details..."
-                      className="w-full outline-none text-slate-800 font-bold bg-transparent border-b border-dashed border-transparent hover:border-slate-300 focus:border-amber-500 pb-0.5 mb-1"
+                      className={`w-full outline-none text-slate-800 font-bold bg-transparent border-b border-dashed border-transparent hover:border-slate-300 focus:border-amber-500 ${isVeryCompact ? 'text-[10px] pb-0' : isCompact ? 'text-xs pb-0' : 'pb-0.5'} mb-1`}
                     />
                     <select 
                       className="w-full text-[10px] bg-slate-50 border border-slate-200 text-slate-500 rounded p-1 outline-none focus:border-amber-500 print:hidden"
@@ -444,13 +448,13 @@ function InvoiceGeneratorContent() {
                       </optgroup>
                     </select>
                   </td>
-                  <td className="py-2 px-2 text-right align-top">
+                  <td className={`${isVeryCompact ? 'py-1' : isCompact ? 'py-1.5' : 'py-2'} px-2 text-right align-top`}>
                     <input 
                       type="number" 
                       value={item.amount || ''} 
                       onChange={e => updateItem(item.id, 'amount', e.target.value)}
                       placeholder="0.00"
-                      className="w-full text-right outline-none text-slate-800 font-bold bg-transparent border-b border-dashed border-transparent hover:border-slate-300 focus:border-amber-500 pb-0.5"
+                      className={`w-full text-right outline-none text-slate-800 font-bold bg-transparent border-b border-dashed border-transparent hover:border-slate-300 focus:border-amber-500 ${isVeryCompact ? 'text-[10px] pb-0' : isCompact ? 'text-xs pb-0' : 'pb-0.5'}`}
                     />
                   </td>
                   <td className="print:hidden text-center align-top">
@@ -465,17 +469,17 @@ function InvoiceGeneratorContent() {
         </div>
 
         {/* Totals Section */}
-        <div className="flex justify-end mb-10 text-sm">
-          <div className="w-1/2 bg-slate-50 p-4 rounded-xl border border-slate-100">
-            <div className="flex justify-between items-center mb-2 text-slate-600">
+        <div className={`flex justify-end text-sm ${isVeryCompact ? 'mb-2' : isCompact ? 'mb-4' : 'mb-10'}`}>
+          <div className={`w-1/2 bg-slate-50 rounded-xl border border-slate-100 ${isVeryCompact ? 'p-2' : isCompact ? 'p-3' : 'p-4'}`}>
+            <div className={`flex justify-between items-center text-slate-600 ${isVeryCompact ? 'mb-1 text-[10px]' : 'mb-2'}`}>
               <span>Subtotal:</span>
               <span>Rs. {totalAmount.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center mb-2 text-slate-600 border-b border-slate-200 pb-2">
+            <div className={`flex justify-between items-center text-slate-600 border-b border-slate-200 ${isVeryCompact ? 'mb-1 pb-1 text-[10px]' : 'mb-2 pb-2'}`}>
               <span>Tax / Discount:</span>
               <span>-</span>
             </div>
-            <div className="flex justify-between items-center text-lg font-black text-slate-900 mt-2">
+            <div className={`flex justify-between items-center font-black text-slate-900 ${isVeryCompact ? 'mt-1 text-sm' : 'mt-2 text-lg'}`}>
               <span>Total Due:</span>
               <span className="text-amber-600">Rs. {totalAmount.toLocaleString()}</span>
             </div>
@@ -483,12 +487,12 @@ function InvoiceGeneratorContent() {
         </div>
 
         {/* Footer */}
-        <div className="mt-auto pt-8 text-xs text-slate-500">
-          <div className="text-center pb-4 mb-4 border-b border-slate-200">
+        <div className={`mt-auto text-slate-500 ${isVeryCompact ? 'pt-2 text-[9px]' : isCompact ? 'pt-4 text-[10px]' : 'pt-8 text-xs'}`}>
+          <div className={`text-center border-b border-slate-200 ${isVeryCompact ? 'pb-2 mb-2' : isCompact ? 'pb-3 mb-3' : 'pb-4 mb-4'}`}>
             <p className="font-bold text-slate-600 italic">This is a computer-generated invoice and does not require a physical signature.</p>
           </div>
           
-          <div className="text-center text-[10px]">
+          <div className={`text-center ${isVeryCompact ? 'text-[8px]' : 'text-[10px]'}`}>
             <p>Thank you for choosing Get Legal Solution. All payments are due within 15 days of invoice date.</p>
             <p className="mt-0.5">Please make cheques payable to "Get Legal Solution".</p>
           </div>
