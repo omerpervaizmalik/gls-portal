@@ -255,7 +255,7 @@ function InvoiceGeneratorContent() {
       <div id="printable-invoice" className={`max-w-[210mm] mx-auto bg-white min-h-[297mm] print:min-h-0 shadow-2xl p-8 print:p-0 flex flex-col relative`}>
         
         {/* Letterhead Header */}
-        <header className={`border-b-2 border-amber-500 flex flex-col md:flex-row justify-between items-start ${isVeryCompact ? 'pb-2 mb-2 space-y-2' : isCompact ? 'pb-4 mb-4 space-y-3' : 'pb-6 mb-6 space-y-4'} md:space-y-0`}>
+        <header className={`border-b-2 border-amber-500 flex flex-col md:flex-row print:flex-row justify-between items-start ${isVeryCompact ? 'pb-2 mb-2 space-y-2' : isCompact ? 'pb-4 mb-4 space-y-3' : 'pb-6 mb-6 space-y-4'} md:space-y-0 print:space-y-0`}>
           <div className="flex items-center space-x-4">
             <img src="/logo.jpeg" alt="Get Legal Solution Logo" className="h-14 w-auto object-contain" />
             <div>
@@ -265,12 +265,13 @@ function InvoiceGeneratorContent() {
               <p className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase mt-0.5">Advocate High Court • M.A, LLB</p>
             </div>
           </div>
-          <div className="text-left md:text-right text-[10px] md:text-xs text-slate-600 space-y-0.5 pl-2 md:pl-0 border-l-2 md:border-l-0 border-amber-200 md:border-transparent">
+          <div className="text-left md:text-right print:text-right text-[10px] md:text-xs text-slate-600 space-y-0.5 pl-2 md:pl-0 print:pl-0 border-l-2 md:border-l-0 print:border-l-0 border-amber-200 md:border-transparent">
             <p className="font-bold text-slate-800">Lahore Office</p>
             <p>132-Model Town Courts, Lahore</p>
             <p>Office no 1, 1st Floor, Bakhshi Tower, 1 Fane Road</p>
             <p className="mt-1 font-bold text-amber-600">+92 301 4991700</p>
             <p className="text-amber-600">info@getlegalsolution.com</p>
+            <p className="text-amber-600">www.getlegalsolution.com</p>
           </div>
         </header>
 
