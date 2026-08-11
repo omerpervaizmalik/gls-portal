@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import { revalidatePath } from "next/cache";
+import CategorySelect from "@/components/CategorySelect";
 
 export default function NewExpensePage() {
   async function createExpense(formData: FormData) {
@@ -73,26 +74,21 @@ export default function NewExpensePage() {
               />
             </div>
 
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-1">Category *</label>
-              <select 
-                id="category" 
-                name="category" 
-                required
-                className="w-full px-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-              >
-                <option value="">Select Category</option>
-                <option value="Staff Salaries">Staff Salaries</option>
-                <option value="Office Rent">Office Rent</option>
-                <option value="Bar Council Fees">Bar Council Fees</option>
-                <option value="Court Filing Charges">Court Filing Charges</option>
-                <option value="Stationery & Printing">Stationery & Printing</option>
-                <option value="Telephone & Internet">Telephone & Internet</option>
-                <option value="Software Tools">Software Tools</option>
-                <option value="Accountant/Audit Fees">Accountant/Audit Fees</option>
-                <option value="Miscellaneous">Miscellaneous</option>
-              </select>
-            </div>
+            <CategorySelect 
+              name="category" 
+              label="Category" 
+              options={[
+                "Staff Salaries",
+                "Office Rent",
+                "Bar Council Fees",
+                "Court Filing Charges",
+                "Stationery & Printing",
+                "Telephone & Internet",
+                "Software Tools",
+                "Accountant/Audit Fees",
+                "Miscellaneous"
+              ]} 
+            />
 
             <div>
               <label htmlFor="note" className="block text-sm font-medium text-slate-700 mb-1">Note (Optional)</label>
