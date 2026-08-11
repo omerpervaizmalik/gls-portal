@@ -57,3 +57,16 @@ body.mobile-app main {
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+@media print {
+  * {
+    overflow: visible !important;
+  }
+  html, body {
+    height: auto !important;
+    min-height: auto !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+}

@@ -167,6 +167,9 @@ function InvoiceGeneratorContent() {
           }
           body, html {
             background: white !important;
+            height: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
           }
           ::-webkit-scrollbar {
             display: none;
