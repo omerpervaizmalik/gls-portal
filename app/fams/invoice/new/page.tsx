@@ -165,11 +165,20 @@ function InvoiceGeneratorContent() {
             size: A4;
             margin: 10mm;
           }
-          body, html {
-            background: white !important;
-            height: auto !important;
-            min-height: auto !important;
-            overflow: visible !important;
+          body * {
+            visibility: hidden;
+          }
+          #printable-invoice, #printable-invoice * {
+            visibility: visible;
+          }
+          #printable-invoice {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
           }
           ::-webkit-scrollbar {
             display: none;
@@ -239,7 +248,7 @@ function InvoiceGeneratorContent() {
       </div>
 
       {/* Printable A4 Document Layout */}
-      <div className="max-w-[210mm] mx-auto bg-white min-h-[297mm] print:min-h-[275mm] shadow-2xl print:shadow-none print:m-0 p-8 print:p-0 flex flex-col relative bg-white">
+      <div id="printable-invoice" className="max-w-[210mm] mx-auto bg-white min-h-[297mm] shadow-2xl p-8 flex flex-col relative">
         
         {/* Letterhead Header */}
         <header className="border-b-2 border-amber-500 pb-6 mb-6 flex flex-col md:flex-row justify-between items-start space-y-4 md:space-y-0">
