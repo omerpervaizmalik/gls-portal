@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Search, Plus, FileText, Calendar, User, ArrowRight, XCircle, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import DeleteInvoiceButton from "@/components/DeleteInvoiceButton";
 
 export default function InvoiceListPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -104,13 +105,14 @@ export default function InvoiceListPage() {
                         {invoice.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right flex justify-end items-center space-x-3">
                       <Link 
                         href={`/fams/invoice/new?id=${invoice.id}`}
                         className="inline-flex items-center text-amber-600 hover:text-amber-700 font-bold"
                       >
                         Modify <ArrowRight className="w-4 h-4 ml-1" />
                       </Link>
+                      <DeleteInvoiceButton id={invoice.id} />
                     </td>
                   </tr>
                 ))

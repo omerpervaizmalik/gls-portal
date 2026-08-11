@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Plus, Search, Calendar, Filter } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import DeleteExpenseButton from "@/components/DeleteExpenseButton";
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +52,7 @@ export default async function ExpensesPage() {
                 <th className="px-6 py-3 font-medium">Category</th>
                 <th className="px-6 py-3 font-medium">Note</th>
                 <th className="px-6 py-3 font-medium text-right">Amount (Rs)</th>
+                <th className="px-6 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -76,6 +78,9 @@ export default async function ExpensesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right font-medium text-rose-600">
                       {expense.amount.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <DeleteExpenseButton id={expense.id} />
                     </td>
                   </tr>
                 ))

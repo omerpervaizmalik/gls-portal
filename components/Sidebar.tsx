@@ -35,6 +35,7 @@ const navItems = [
   { icon: Users,           label: 'Client Accounts',    href: '/clients' },
   { icon: Scale,           label: 'Tax Filing Record', href: '/tax-filings' },
   { icon: ClipboardList,   label: 'Doc Requirements',  href: '/requirements' },
+  { icon: Files,           label: 'Quotations',        href: '/fams/quote' },
   { icon: User,            label: 'My Profile',        href: '/profile' },
 ];
 

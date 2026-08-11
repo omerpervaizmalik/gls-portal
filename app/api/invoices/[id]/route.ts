@@ -58,7 +58,7 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// Cancel Invoice (Delete Ledger Entry but keep Invoice record marked as CANCELLED)
+// Delete Invoice (Permanently delete invoice and its ledger entry)
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session || session.user?.role !== "ADMIN") {
@@ -83,20 +83,16 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       });
     }
 
-    // Mark invoice as cancelled instead of deleting it (audit trail)
-    const cancelledInvoice = await prisma.invoice.update({
-      where: { id },
-      data: { 
-        status: 'CANCELLED',
-        ledgerEntryId: null // Clear link since it's deleted
-      }
+    // Delete the invoice permanently
+    await prisma.invoice.delete({
+      where: { id }
     });
 
     revalidatePath("/fams");
     revalidatePath(`/fams/ledger/${invoice.clientId}`);
     revalidatePath("/fams/invoice");
 
-    return NextResponse.json(cancelledInvoice);
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

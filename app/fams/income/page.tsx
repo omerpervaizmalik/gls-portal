@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { TrendingUp, Filter, Plus, PieChart } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import DeleteIncomeButton from "@/components/DeleteIncomeButton";
 
 export const dynamic = 'force-dynamic';
 
@@ -71,6 +72,7 @@ export default async function IncomeRegisterPage() {
                   <th className="px-6 py-3 font-medium">Client</th>
                   <th className="px-6 py-3 font-medium">Service Type</th>
                   <th className="px-6 py-3 font-medium text-right">Amount (Rs)</th>
+                  <th className="px-6 py-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -96,6 +98,9 @@ export default async function IncomeRegisterPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-emerald-600">
                         + {record.amount.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <DeleteIncomeButton id={record.id} />
                       </td>
                     </tr>
                   ))

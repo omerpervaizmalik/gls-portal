@@ -11,40 +11,40 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  password      String    // Hashed password
-  role          String    @default("CLIENT") // ADMIN or CLIENT
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String // Hashed password
+  role      String   @default("CLIENT") // ADMIN or CLIENT
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  permissions   Permission[]
-  logs          ActivityLog[]
-  profile       UserProfile?
-  
+  permissions Permission[]
+  logs        ActivityLog[]
+  profile     UserProfile?
+
   // Task Management Relations
-  assignedTasks Task[]        @relation("AssignedTo")
-  createdTasks  Task[]        @relation("CreatedBy")
+  assignedTasks Task[]         @relation("AssignedTo")
+  createdTasks  Task[]         @relation("CreatedBy")
   taskLogs      TaskLog[]
   reminders     Reminder[]
   notifications Notification[]
 }
 
 model Notification {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title       String
-  message     String
-  type        String   @default("INFO") // INFO, TASK, REMINDER
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, TASK, REMINDER
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 model Client {
-  id            String    @id @default(cuid())
-  cfNo          String    @unique
+  id            String         @id @default(cuid())
+  cfNo          String         @unique
   name          String
   cnic          String?
   email         String?
@@ -59,83 +59,84 @@ model Client {
   description   String?
   category      String?
   reference     String?
-  status        String    @default("ACTIVE")
-  entryDate     DateTime  @default(now())
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  status        String         @default("ACTIVE")
+  entryDate     DateTime       @default(now())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   filings       Filing[]
   ledgerEntries LedgerEntry[]
   disbursements Disbursement[]
   incomeRecords IncomeRecord[]
   invoices      Invoice[]
+  quotations    Quotation[]
   matters       Matter[]
 }
 
 model Matter {
-  id            String    @id @default(cuid())
-  clientId      String
-  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  title         String
-  description   String?
-  status        String    @default("OPEN") // OPEN, CLOSED, ON_HOLD
-  caseNumber    String?   @unique
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  tasks         Task[]
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      String   @default("OPEN") // OPEN, CLOSED, ON_HOLD
+  caseNumber  String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tasks       Task[]
 }
 
 model Task {
-  id            String    @id @default(cuid())
-  title         String
-  description   String?
-  priority      String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
-  status        String    @default("PENDING") // PENDING, RESEARCHING, DRAFTING, REVIEW, COMPLETED
-  
-  deadline      DateTime?
-  completedAt   DateTime?
-  
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  priority    String  @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status      String  @default("PENDING") // PENDING, RESEARCHING, DRAFTING, REVIEW, COMPLETED
+
+  deadline    DateTime?
+  completedAt DateTime?
+
   // Relations
-  matterId      String?
-  matter        Matter?   @relation(fields: [matterId], references: [id], onDelete: SetNull)
-  
-  assignedToId  String?
-  assignedTo    User?     @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
-  
-  createdById   String?
-  createdBy     User?      @relation("CreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  
+  matterId String?
+  matter   Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
+
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("CreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
   // Legal Specifics
-  billableHours Float     @default(0)
-  isBillable    Boolean   @default(true)
-  
+  billableHours Float   @default(0)
+  isBillable    Boolean @default(true)
+
   // Attachments (Links to OneDrive/Storage)
-  attachments   TaskAttachment[]
-  
-  logs          TaskLog[]
-  reminders     Reminder[]
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  attachments TaskAttachment[]
+
+  logs      TaskLog[]
+  reminders Reminder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TaskAttachment {
-  id          String   @id @default(cuid())
-  taskId      String
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  fileName    String
-  fileUrl     String
-  uploadedAt  DateTime @default(now())
+  id         String   @id @default(cuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileName   String
+  fileUrl    String
+  uploadedAt DateTime @default(now())
 }
 
 model TaskLog {
-  id          String   @id @default(cuid())
-  taskId      String
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action      String   // e.g., "STATUS_CHANGE", "ASSIGNMENT", "DOCUMENT_UPLOAD", "COMMENT"
-  details     String?
-  timestamp   DateTime @default(now())
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String // e.g., "STATUS_CHANGE", "ASSIGNMENT", "DOCUMENT_UPLOAD", "COMMENT"
+  details   String?
+  timestamp DateTime @default(now())
 }
 
 model Reminder {
@@ -151,30 +152,30 @@ model Reminder {
 }
 
 model Filing {
-  id            String    @id @default(cuid())
-  clientId      String
-  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  year          Int
-  
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  year     Int
+
   // Workflow Statuses
-  status        String    @default("PENDING") 
-  isContacted   Boolean   @default(false)
-  docsObtained  Boolean   @default(false)
-  isWorking     Boolean   @default(false)
-  isDraftReady  Boolean   @default(false)
-  isFiled       Boolean   @default(false)
-  isBilled      Boolean   @default(false)
-  isPaid        Boolean   @default(false)
-  
-  billAmount    Float     @default(0)
-  paymentAmount Float     @default(0)
+  status       String  @default("PENDING")
+  isContacted  Boolean @default(false)
+  docsObtained Boolean @default(false)
+  isWorking    Boolean @default(false)
+  isDraftReady Boolean @default(false)
+  isFiled      Boolean @default(false)
+  isBilled     Boolean @default(false)
+  isPaid       Boolean @default(false)
+
+  billAmount    Float   @default(0)
+  paymentAmount Float   @default(0)
   filledBy      String?
   notes         String?
-  
-  logs          FilingLog[]
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+
+  logs FilingLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([clientId, year])
 }
@@ -187,78 +188,90 @@ model FilingLog {
   userName  String?
   timestamp DateTime @default(now())
   note      String
-  stage     String?  // The process stage or bottleneck
+  stage     String? // The process stage or bottleneck
   type      String   @default("CONTACT") // CONTACT, REMINDER, INTERNAL
   createdAt DateTime @default(now())
 }
 
 model Permission {
-  id            String   @id @default(cuid())
-  userId        String
-  driveItemId   String   // The ID of the folder in OneDrive
-  folderPath    String   // Human readable path for display/logic
-  canWrite      Boolean  @default(false)
-  
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String  @id @default(cuid())
+  userId      String
+  driveItemId String // The ID of the folder in OneDrive
+  folderPath  String // Human readable path for display/logic
+  canWrite    Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, driveItemId])
 }
 
 model ActivityLog {
-  id            String   @id @default(cuid())
-  userId        String
-  action        String   // e.g., "LOGIN", "VIEW", "UPLOAD", "DELETE", "NAVIGATE"
-  module        String   @default("GENERAL") // e.g., "AUTH", "FILE_ARCHIVE", "NAVIGATION"
-  resource      String?  // e.g., the URL or file path
-  details       String?  // Human readable description
-  metadata      Json?    // Detailed JSON object of the event
-  ipAddress     String?
-  userAgent     String?
-  timestamp     DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  action    String // e.g., "LOGIN", "VIEW", "UPLOAD", "DELETE", "NAVIGATE"
+  module    String   @default("GENERAL") // e.g., "AUTH", "FILE_ARCHIVE", "NAVIGATION"
+  resource  String? // e.g., the URL or file path
+  details   String? // Human readable description
+  metadata  Json? // Detailed JSON object of the event
+  ipAddress String?
+  userAgent String?
+  timestamp DateTime @default(now())
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Expense {
-  id          String   @id @default(cuid())
-  date        DateTime
-  category    String
-  amount      Float
-  note        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  date      DateTime
+  category  String
+  amount    Float
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model LedgerEntry {
   id          String   @id @default(cuid())
   clientId    String
   client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  type        String   // "DEBIT" (Invoice/Owes) or "CREDIT" (Payment)
+  type        String // "DEBIT" (Invoice/Owes) or "CREDIT" (Payment)
   amount      Float
   date        DateTime
   description String
   paymentMode String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
-  invoice     Invoice?
+
+  invoice Invoice?
 }
 
 model Invoice {
-  id            String   @id @default(cuid())
-  invoiceNo     String   @unique
-  clientId      String
-  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  date          DateTime
-  items         Json     // Array of { description: string, amount: number }
-  totalAmount   Float
-  status        String   @default("ISSUED") // ISSUED, CANCELLED
-  
-  ledgerEntryId String?  @unique
+  id          String   @id @default(cuid())
+  invoiceNo   String   @unique
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date        DateTime
+  items       Json // Array of { description: string, amount: number }
+  totalAmount Float
+  status      String   @default("ISSUED") // ISSUED, CANCELLED
+
+  ledgerEntryId String?      @unique
   ledgerEntry   LedgerEntry? @relation(fields: [ledgerEntryId], references: [id], onDelete: SetNull)
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Quotation {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date        DateTime
+  items       Json // Array of { description: string, amount: number }
+  totalAmount Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Disbursement {
@@ -285,57 +298,57 @@ model IncomeRecord {
 }
 
 model FiscalYear {
-  id          String   @id @default(cuid())
-  year        Int      @unique
-  startDate   DateTime
-  endDate     DateTime
-  isActive    Boolean  @default(false)
+  id        String   @id @default(cuid())
+  year      Int      @unique
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
 }
 
 model UserProfile {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  designation       String?
-  experienceYears   String?
-  areasOfPractice   String?
-  
-  phoneNumber       String?
-  whatsappNumber    String?
-  officeAddress     String?
-  googleLocation    String?
-  
-  researchWork      String?
-  proBonoWork       String?
-  blogLink          String?
-  vlogLink          String?
-  
-  conferences       String?
-  trainings         String?
-  foreignExposure   String?
-  
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  designation     String?
+  experienceYears String?
+  areasOfPractice String?
+
+  phoneNumber    String?
+  whatsappNumber String?
+  officeAddress  String?
+  googleLocation String?
+
+  researchWork String?
+  proBonoWork  String?
+  blogLink     String?
+  vlogLink     String?
+
+  conferences     String?
+  trainings       String?
+  foreignExposure String?
+
   previousPositions String?
   prominentCases    String?
   clientReviews     String?
-  
+
   // File URLs or JSON array strings
-  profilePhoto      String?
-  certificates      String?
-  attendanceCerts   String?
-  experienceCerts   String?
-  caseDocuments     String?
+  profilePhoto    String?
+  certificates    String?
+  attendanceCerts String?
+  experienceCerts String?
+  caseDocuments   String?
   // New License Fields
-  cnicNo            String?
-  cnicDoc           String?
-  lowerCourtNo      String?
-  lowerCourtDoc     String?
-  highCourtNo       String?
-  highCourtDoc      String?
-  supremeCourtNo    String?
-  supremeCourtDoc   String?
-  taxBarNo          String?
-  taxBarDoc         String?
+  cnicNo          String?
+  cnicDoc         String?
+  lowerCourtNo    String?
+  lowerCourtDoc   String?
+  highCourtNo     String?
+  highCourtDoc    String?
+  supremeCourtNo  String?
+  supremeCourtDoc String?
+  taxBarNo        String?
+  taxBarDoc       String?
 }
 
 model SystemSetting {
