@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions as any);
-  if (!session || (session.user as any)?.role !== "ADMIN") {
+  if (!session || (session as any)?.user?.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
