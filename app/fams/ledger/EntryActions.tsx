@@ -20,7 +20,9 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
   });
 
   const handleGenerateInvoice = () => {
-    window.open(`/fams/invoice/new?clientId=${clientId}&desc=${encodeURIComponent(entry.description)}&amt=${entry.amount}`, '_blank');
+    // Strip any existing "Invoice INV-XXXX: " prefix from the description
+    const cleanDesc = entry.description.replace(/^Invoice\s+INV-\d+:\s*/i, '');
+    window.open(`/fams/invoice/new?clientId=${clientId}&desc=${encodeURIComponent(cleanDesc)}&amt=${entry.amount}`, '_blank');
   };
 
   const handleUpdateEntry = async (e: React.FormEvent) => {

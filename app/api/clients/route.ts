@@ -58,50 +58,67 @@ export async function POST(req: NextRequest) {
     const { 
       cfNo, name, cnic, email, irisPassword, mobileNo, 
       address, city, ntn, strn, businessName, profileImage, description, category, entryDate,
-      reference, status, filings 
+      reference, status, filings, clientType = "TAX"
     } = body;
 
-    if (!cfNo || !name) {
-      return NextResponse.json({ error: "CF No and Name are required" }, { status: 400 });
-    }
+    let finalCfNo = cfNo;
 
-    // ── Duplicate checks ──────────────────────────────────────────────────────
+    if (clientType === "LEGAL") {
+      if (!name) {
+        return NextResponse.json({ error: "Name is required" }, { status: 400 });
+      }
 
-    // 1. Check CF No (always unique)
-    const existingCf = await prisma.client.findUnique({ where: { cfNo } });
-    if (existingCf) {
-      return NextResponse.json(
-        { error: `CF No "${cfNo}" is already assigned to "${existingCf.name}". Please use the next available CF No.` },
-        { status: 409 }
-      );
-    }
+      const result = await prisma.$queryRaw`SELECT "cfNo" FROM "Client" WHERE "cfNo" LIKE 'L-%' ORDER BY CAST(SUBSTRING("cfNo" FROM 3) AS INTEGER) DESC LIMIT 1`;
+      if (Array.isArray(result) && result.length > 0 && (result as any)[0].cfNo) {
+        const currentHighest = parseInt(((result as any)[0].cfNo as string).substring(2), 10);
+        finalCfNo = `L-${currentHighest + 1}`;
+      } else {
+        finalCfNo = "L-1";
+      }
+    } else {
+      if (!cfNo || !name) {
+        return NextResponse.json({ error: "CF No and Name are required" }, { status: 400 });
+      }
 
-    // 2. Check CNIC (only if provided and non-empty)
-    if (cnic && cnic.trim() !== "") {
-      const existingCnic = await prisma.client.findFirst({ where: { cnic: cnic.trim() } });
-      if (existingCnic) {
+      // ── Duplicate checks ──────────────────────────────────────────────────────
+
+      // 1. Check CF No (always unique)
+      const existingCf = await prisma.client.findUnique({ where: { cfNo } });
+      if (existingCf) {
         return NextResponse.json(
-          { error: `CNIC "${cnic}" is already registered under "${existingCnic.name}" (CF #${existingCnic.cfNo}).` },
+          { error: `CF No "${cfNo}" is already assigned to "${existingCf.name}". Please use the next available CF No.` },
           { status: 409 }
         );
       }
-    }
 
-    // 3. Check NTN (only if provided and non-empty)
-    if (ntn && ntn.trim() !== "") {
-      const existingNtn = await prisma.client.findFirst({ where: { ntn: ntn.trim() } });
-      if (existingNtn) {
-        return NextResponse.json(
-          { error: `NTN "${ntn}" is already registered under "${existingNtn.name}" (CF #${existingNtn.cfNo}).` },
-          { status: 409 }
-        );
+      // 2. Check CNIC (only if provided and non-empty)
+      if (cnic && cnic.trim() !== "") {
+        const existingCnic = await prisma.client.findFirst({ where: { cnic: cnic.trim() } });
+        if (existingCnic) {
+          return NextResponse.json(
+            { error: `CNIC "${cnic}" is already registered under "${existingCnic.name}" (CF #${existingCnic.cfNo}).` },
+            { status: 409 }
+          );
+        }
+      }
+
+      // 3. Check NTN (only if provided and non-empty)
+      if (ntn && ntn.trim() !== "") {
+        const existingNtn = await prisma.client.findFirst({ where: { ntn: ntn.trim() } });
+        if (existingNtn) {
+          return NextResponse.json(
+            { error: `NTN "${ntn}" is already registered under "${existingNtn.name}" (CF #${existingNtn.cfNo}).` },
+            { status: 409 }
+          );
+        }
       }
     }
 
     // ── Create client ─────────────────────────────────────────────────────────
     const client = await prisma.client.create({
       data: {
-        cfNo,
+        cfNo: finalCfNo,
+        clientType,
         name,
         cnic: cnic?.trim() || null,
         email,

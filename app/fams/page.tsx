@@ -62,18 +62,36 @@ export default async function FamsDashboard({ searchParams }: { searchParams: { 
   }
 
   // Fetch clients with negative balances, sorted by CF No
-  const results = await prisma.$queryRaw`
+  const taxResults = await prisma.$queryRaw`
     SELECT * FROM "Client"
+    WHERE "clientType" = 'TAX' OR "clientType" IS NULL
+    ORDER BY CAST("cfNo" AS INTEGER) ASC
+  `;
+
+  const legalResults = await prisma.$queryRaw`
+    SELECT * FROM "Client"
+    WHERE "clientType" = 'LEGAL'
     ORDER BY CAST("cfNo" AS INTEGER) ASC
   `;
   
   // Since we need ledger entries, we'll fetch them for these clients
-  const clientIds = (results as any[]).map(c => c.id);
+  const taxClientIds = (taxResults as any[]).map(c => c.id);
+  const legalClientIds = (legalResults as any[]).map(c => c.id);
+  const allClientIds = [...taxClientIds, ...legalClientIds];
+
   const ledgerEntries = await prisma.ledgerEntry.findMany({
-    where: { clientId: { in: clientIds } }
+    where: { clientId: { in: allClientIds } }
   });
 
-  const clientsWithBalance = (results as any[]).map(c => {
+  const taxClientsWithBalance = (taxResults as any[]).map(c => {
+    const entries = ledgerEntries.filter(e => e.clientId === c.id);
+    const balance = entries.reduce((acc, entry) => {
+      return entry.type === 'DEBIT' ? acc - entry.amount : acc + entry.amount;
+    }, 0);
+    return { ...c, balance };
+  }).filter(c => c.balance < 0).slice(0, 10);
+
+  const legalClientsWithBalance = (legalResults as any[]).map(c => {
     const entries = ledgerEntries.filter(e => e.clientId === c.id);
     const balance = entries.reduce((acc, entry) => {
       return entry.type === 'DEBIT' ? acc - entry.amount : acc + entry.amount;
@@ -180,7 +198,7 @@ export default async function FamsDashboard({ searchParams }: { searchParams: { 
             <Link href="/fams/ledger" className="text-sm text-amber-600 hover:text-amber-700 font-medium">View All</Link>
           </div>
           <div className="p-0 flex-1">
-            {clientsWithBalance.length === 0 ? (
+            {taxClientsWithBalance.length === 0 ? (
               <div className="p-8 text-center text-slate-500 flex flex-col items-center justify-center h-full">
                 <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
                   <BookOpen className="w-6 h-6 text-slate-300" />
@@ -189,7 +207,42 @@ export default async function FamsDashboard({ searchParams }: { searchParams: { 
               </div>
             ) : (
               <ul className="divide-y divide-slate-100">
-                {clientsWithBalance.map((client) => (
+                {taxClientsWithBalance.map((client) => (
+                  <li key={client.id} className="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-slate-800">{client.name}</p>
+                      <p className="text-xs text-slate-500">{client.cfNo}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-rose-600">Rs. {Math.abs(client.balance).toLocaleString()}</p>
+                      <Link href={`/fams/ledger/${client.id}`} className="text-xs text-amber-600 hover:underline">View Ledger</Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-amber-200 shadow-sm flex flex-col">
+          <div className="p-6 border-b border-amber-100 flex items-center justify-between bg-amber-50 rounded-t-xl">
+            <h3 className="font-semibold text-amber-900 flex items-center">
+              <AlertCircle className="w-5 h-5 text-amber-600 mr-2" />
+              Legal Clients — Pending Dues
+            </h3>
+            <Link href="/fams/ledger" className="text-sm text-amber-700 hover:text-amber-800 font-medium">View All</Link>
+          </div>
+          <div className="p-0 flex-1">
+            {legalClientsWithBalance.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 flex flex-col items-center justify-center h-full">
+                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                  <BookOpen className="w-6 h-6 text-slate-300" />
+                </div>
+                <p>No legal client dues.</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {legalClientsWithBalance.map((client) => (
                   <li key={client.id} className="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between">
                     <div>
                       <p className="font-medium text-slate-800">{client.name}</p>

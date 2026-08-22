@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Printer, ArrowLeft, Plus, Trash2, Download, Save, FileCheck, Loader2 } from "lucide-react";
+import { Printer, ArrowLeft, Plus, Trash2, Download, Save, FileCheck, Loader2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import SearchableCategorySelect from '@/components/SearchableCategorySelect';
+import { SERVICE_CATEGORY_GROUPS } from '@/app/clients/constants';
 
 import { Suspense } from 'react';
 
@@ -20,16 +22,73 @@ function InvoiceGeneratorContent() {
   const [clientSearch, setClientSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
-  const [invoiceNo, setInvoiceNo] = useState(`INV-${Math.floor(Math.random() * 10000)}`);
+  const [invoiceNo, setInvoiceNo] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [invoiceStatus, setInvoiceStatus] = useState("ISSUED");
+  const [showQuickRegister, setShowQuickRegister] = useState(false);
+  const [quickRegData, setQuickRegData] = useState({ name: '', phone: '', category: '' });
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  const handleQuickRegister = async () => {
+    if (!quickRegData.name) {
+      alert("Name is required");
+      return;
+    }
+    setIsRegistering(true);
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: quickRegData.name,
+          mobileNo: quickRegData.phone,
+          category: quickRegData.category,
+          clientType: 'LEGAL'
+        })
+      });
+      if (!res.ok) throw new Error("Failed to register client");
+      const data = await res.json();
+      setClientData(data);
+      setClientSearch(data.name);
+      setShowQuickRegister(false);
+      setQuickRegData({ name: '', phone: '', category: '' });
+      setClients(prev => [...prev, data]);
+    } catch (error) {
+      console.error(error);
+      alert("Error registering client");
+    } finally {
+      setIsRegistering(false);
+    }
+  };
   
+  // Strip "Invoice INV-XXXX: " prefix from description passed via URL params
+  const cleanDescription = (desc: string) => {
+    return desc.replace(/^Invoice\s+INV-\d+:\s*/i, '');
+  };
+
   const [items, setItems] = useState([
-    { id: 1, description: paramDesc ? decodeURIComponent(paramDesc) : 'Legal Consultation Fee', amount: paramAmt ? Number(paramAmt) : 0 }
+    { id: 1, description: paramDesc ? cleanDescription(decodeURIComponent(paramDesc)) : 'Legal Consultation Fee', amount: paramAmt ? Number(paramAmt) : 0 }
   ]);
 
   useEffect(() => {
+    // Fetch the next sequential invoice number for new invoices
+    if (!invoiceId) {
+      fetch('/api/invoices')
+        .then(res => res.json())
+        .then(invoices => {
+          if (Array.isArray(invoices) && invoices.length > 0) {
+            // invoices are ordered by createdAt desc, so first one is latest
+            const lastInvoiceNo = invoices[0].invoiceNo || "INV-0";
+            const lastNum = parseInt(lastInvoiceNo.split("-")[1] || "0");
+            setInvoiceNo(`INV-${lastNum + 1}`);
+          } else {
+            setInvoiceNo("INV-1");
+          }
+        })
+        .catch(() => setInvoiceNo("INV-1"));
+    }
+
     fetch('/api/clients?limit=1000')
       .then(res => res.json())
       .then(data => {
@@ -289,7 +348,7 @@ function InvoiceGeneratorContent() {
             <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Billed To</h3>
             
             <div className="relative print:hidden mb-2">
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <input 
                   type="text"
                   placeholder="Search client by name or CF No..."
@@ -301,6 +360,14 @@ function InvoiceGeneratorContent() {
                   onFocus={() => setShowDropdown(true)}
                   className="w-full text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded px-2 py-1.5 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                 />
+                {!clientData && (
+                  <button
+                    onClick={() => setShowQuickRegister(!showQuickRegister)}
+                    className="flex-shrink-0 flex items-center px-2 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded text-[10px] font-bold transition-colors"
+                  >
+                    <UserPlus className="w-3 h-3 mr-1" /> Quick Register
+                  </button>
+                )}
                 {clientData && (
                   <button 
                     onClick={() => { setClientData(null); setClientSearch(""); }}
@@ -334,6 +401,46 @@ function InvoiceGeneratorContent() {
                 </div>
               )}
             </div>
+
+            {showQuickRegister && !clientData && (
+              <div className="print:hidden mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Name (Required)"
+                    value={quickRegData.name}
+                    onChange={e => setQuickRegData({...quickRegData, name: e.target.value})}
+                    className="flex-1 text-xs px-2 py-1.5 border border-slate-200 rounded outline-none focus:border-amber-500 bg-white"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Phone (Optional)"
+                    value={quickRegData.phone}
+                    onChange={e => setQuickRegData({...quickRegData, phone: e.target.value})}
+                    className="w-1/3 text-xs px-2 py-1.5 border border-slate-200 rounded outline-none focus:border-amber-500 bg-white"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1 bg-white rounded border border-slate-200">
+                    <SearchableCategorySelect
+                      groups={SERVICE_CATEGORY_GROUPS}
+                      name="category"
+                      placeholder="Select Category..."
+                      value={quickRegData.category}
+                      onChange={(val) => setQuickRegData({...quickRegData, category: val})}
+                    />
+                  </div>
+                  <button
+                    onClick={handleQuickRegister}
+                    disabled={isRegistering || !quickRegData.name}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs font-bold rounded transition-colors flex items-center"
+                  >
+                    {isRegistering ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+                    Register
+                  </button>
+                </div>
+              </div>
+            )}
 
             {clientData ? (
               <div className="text-slate-800 font-medium">
@@ -397,60 +504,16 @@ function InvoiceGeneratorContent() {
                       placeholder="Type service details..."
                       className={`w-full outline-none text-slate-800 font-bold bg-transparent border-b border-dashed border-transparent hover:border-slate-300 focus:border-amber-500 ${isVeryCompact ? 'text-[10px] pb-0' : isCompact ? 'text-xs pb-0' : 'pb-0.5'} mb-1`}
                     />
-                    <select 
-                      className="w-full text-[10px] bg-slate-50 border border-slate-200 text-slate-500 rounded p-1 outline-none focus:border-amber-500 print:hidden"
-                      onChange={e => {
-                        if (e.target.value) {
-                          updateItem(item.id, 'description', e.target.value);
-                          e.target.value = ""; // reset after selection
-                        }
-                      }}
-                      defaultValue=""
-                    >
-                      <option value="">-- Or select a template --</option>
-                      <optgroup label="General & Corporate Legal Fees">
-                        <option value="Retainer Fee">Retainer Fee</option>
-                        <option value="Lump Sum / Flat Fee">Lump Sum / Flat Fee</option>
-                        <option value="Hourly Billing Rate">Hourly Billing Rate</option>
-                        <option value="Contingency Fee">Contingency Fee</option>
-                        <option value="Success Fee">Success Fee</option>
-                        <option value="Legal Research & Precedent Analysis Fee">Legal Research & Precedent Analysis Fee</option>
-                        <option value="Drafting & Vetting Fee (Contracts, Deeds, Bylaws)">Drafting & Vetting Fee (Contracts, Deeds, Bylaws)</option>
-                        <option value="Legal Opinion Fee">Legal Opinion Fee</option>
-                        <option value="Due Diligence Audit Fee">Due Diligence Audit Fee</option>
-                        <option value="Court Appearance & Representation Fee">Court Appearance & Representation Fee</option>
-                        <option value="Corporate Secretarial Service Fee">Corporate Secretarial Service Fee</option>
-                      </optgroup>
-                      <optgroup label="Company Registration Matters (SECP)">
-                        <option value="User Registration Fee (eZfile Portal access)">User Registration Fee (eZfile Portal access)</option>
-                        <option value="Name Reservation Fee">Name Reservation Fee</option>
-                        <option value="Company Incorporation/Registration Fee (Based on Authorized Capital)">Company Incorporation/Registration Fee (Based on Authorized Capital)</option>
-                        <option value="Form A / Form 29 Filing Fee (Annual Returns/Director Changes)">Form A / Form 29 Filing Fee (Annual Returns/Director Changes)</option>
-                        <option value="Memorandum & Articles of Association Drafting Fee">Memorandum & Articles of Association Drafting Fee</option>
-                        <option value="Certified True Copy (CTC) Issuance Fee">Certified True Copy (CTC) Issuance Fee</option>
-                        <option value="Mortgage or Charge Registration Fee">Mortgage or Charge Registration Fee</option>
-                        <option value="Status Conversion Fee (e.g., Private to Public or SMC)">Status Conversion Fee (e.g., Private to Public or SMC)</option>
-                        <option value="Issuance of Further Share Capital Fee">Issuance of Further Share Capital Fee</option>
-                      </optgroup>
-                      <optgroup label="Taxation Services (FBR)">
-                        <option value="NTN Registration Fee (Individual, AOP, or Company)">NTN Registration Fee (Individual, AOP, or Company)</option>
-                        <option value="Income Tax Return Filing Fee (Annual)">Income Tax Return Filing Fee (Annual)</option>
-                        <option value="Sales Tax Registration Fee (GST/PST)">Sales Tax Registration Fee (GST/PST)</option>
-                        <option value="Monthly Sales Tax Filing Fee (Federal or Provincial)">Monthly Sales Tax Filing Fee (Federal or Provincial)</option>
-                        <option value="Withholding Tax Statement Filing Fee">Withholding Tax Statement Filing Fee</option>
-                        <option value="Tax Audit Representation Fee">Tax Audit Representation Fee</option>
-                        <option value="Tax Appeal & Litigation Fee (Commissioner or Tribunal)">Tax Appeal & Litigation Fee (Commissioner or Tribunal)</option>
-                        <option value="Exemption Certificate Application Fee">Exemption Certificate Application Fee</option>
-                      </optgroup>
-                      <optgroup label="Out-of-Pocket Expenses (Disbursements)">
-                        <option value="Official Government/Challan Fees">Official Government/Challan Fees</option>
-                        <option value="Stamp Paper & Duty Charges">Stamp Paper & Duty Charges</option>
-                        <option value="Process Serving & Courier Fees">Process Serving & Courier Fees</option>
-                        <option value="Printing, Binding, and Stationery Charges">Printing, Binding, and Stationery Charges</option>
-                        <option value="Travel & Outstation Lodging Expenses">Travel & Outstation Lodging Expenses</option>
-                        <option value="Notarization & Attestation Charges">Notarization & Attestation Charges</option>
-                      </optgroup>
-                    </select>
+                    <div className="print:hidden mt-1 bg-white rounded border border-slate-200">
+                      <SearchableCategorySelect
+                        groups={SERVICE_CATEGORY_GROUPS}
+                        name=""
+                        placeholder="Search service template..."
+                        onChange={(val) => {
+                          if (val) updateItem(item.id, 'description', val);
+                        }}
+                      />
+                    </div>
                   </td>
                   <td className={`${isVeryCompact ? 'py-1' : isCompact ? 'py-1.5' : 'py-2'} px-2 text-right align-top`}>
                     <input 

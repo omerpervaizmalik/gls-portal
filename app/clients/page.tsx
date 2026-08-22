@@ -10,6 +10,7 @@ import {
 import { Cell } from "./Cell";
 import { InfoRow } from "./InfoRow";
 import { useSession } from "next-auth/react";
+import SearchableCategorySelect from "@/components/SearchableCategorySelect";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Client {
@@ -31,11 +32,12 @@ interface Client {
   reference?: string;
   status: string;
   entryDate?: string;
+  clientType?: "TAX" | "LEGAL";
 }
 
 type EditRow = Omit<Client, "id">;
 
-import { STATUS_OPTIONS, SERVICE_CATEGORIES } from "./constants";
+import { STATUS_OPTIONS, SERVICE_CATEGORIES, SERVICE_CATEGORY_GROUPS } from "./constants";
 
 // ─── Add Client Modal ─────────────────────────────────────────────────────────
 function AddClientModal({ onClose, onSave }: { onClose: () => void; onSave: () => void }) {
@@ -43,7 +45,7 @@ function AddClientModal({ onClose, onSave }: { onClose: () => void; onSave: () =
     cfNo: "", name: "", cnic: "", email: "",
     irisPassword: "", mobileNo: "", reference: "", status: "ACTIVE",
     address: "", city: "", ntn: "", strn: "", businessName: "", profileImage: "",
-    description: "", category: "",
+    description: "", category: "", clientType: "TAX",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
@@ -63,7 +65,8 @@ function AddClientModal({ onClose, onSave }: { onClose: () => void; onSave: () =
   }, []);
 
   const handleSave = async () => {
-    if (!form.cfNo || !form.name) { setError("CF No and Name are required"); return; }
+    if (form.clientType === "TAX" && (!form.cfNo || !form.name)) { setError("CF No and Name are required"); return; }
+    if (form.clientType === "LEGAL" && !form.name) { setError("Name is required"); return; }
     setSaving(true);
     setError("");
     try {
@@ -81,9 +84,9 @@ function AddClientModal({ onClose, onSave }: { onClose: () => void; onSave: () =
     }
   };
 
-  const REQUIRED_UNIQUE_FIELDS: (keyof EditRow)[] = ["cfNo", "cnic", "ntn"];
+  const REQUIRED_UNIQUE_FIELDS: (keyof EditRow)[] = form.clientType === "LEGAL" ? [] : ["cfNo", "cnic", "ntn"];
 
-  const fields: { label: string; key: keyof EditRow; placeholder?: string }[] = [
+  const allFields: { label: string; key: keyof EditRow; placeholder?: string }[] = [
     { label: "CF No",         key: "cfNo",         placeholder: "e.g. 101" },
     { label: "Full Name",     key: "name",         placeholder: "Client full name" },
     { label: "CNIC",          key: "cnic",         placeholder: "0000000000000" },
@@ -98,6 +101,13 @@ function AddClientModal({ onClose, onSave }: { onClose: () => void; onSave: () =
     { label: "Description",   key: "description",  placeholder: "Relevant information..." },
   ];
 
+  const fields = allFields.filter(f => {
+    if (form.clientType === "LEGAL" && (f.key === "cfNo" || f.key === "cnic" || f.key === "ntn")) {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
       <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -107,6 +117,24 @@ function AddClientModal({ onClose, onSave }: { onClose: () => void; onSave: () =
         </div>
         <div className="p-8 space-y-4 overflow-y-auto">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{error}</div>}
+          <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+            <button
+              onClick={() => setForm(prev => ({ ...prev, clientType: "TAX" }))}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+                form.clientType === "TAX" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Tax Client
+            </button>
+            <button
+              onClick={() => setForm(prev => ({ ...prev, clientType: "LEGAL" }))}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+                form.clientType === "LEGAL" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Legal Client
+            </button>
+          </div>
           <p className="text-[10px] text-slate-400"><span className="text-red-500 font-bold">★</span> = Required &amp; must be unique</p>
           <div className="grid grid-cols-2 gap-4">
             {fields.map(({ label, key, placeholder }) => (
@@ -135,26 +163,11 @@ function AddClientModal({ onClose, onSave }: { onClose: () => void; onSave: () =
             ))}
             <div className="col-span-2">
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Service Category</label>
-              <div className="flex space-x-2">
-                <select
-                  value={SERVICE_CATEGORIES.includes(form.category || "") ? form.category : "Other"}
-                  onChange={e => setForm(f => ({ ...f, category: e.target.value === "Other" ? "" : e.target.value }))}
-                  className="w-1/2 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                >
-                  <option value="">-- Select Category --</option>
-                  {SERVICE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  <option value="Other">Other (Manual Entry)</option>
-                </select>
-                {(!SERVICE_CATEGORIES.includes(form.category || "") || form.category === "") && (
-                  <input
-                    type="text"
-                    placeholder="Type manual category..."
-                    value={form.category}
-                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  />
-                )}
-              </div>
+              <SearchableCategorySelect
+                value={form.category || ""}
+                onChange={(val) => setForm(f => ({ ...f, category: val }))}
+                groups={SERVICE_CATEGORY_GROUPS}
+              />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Status</label>
@@ -502,6 +515,7 @@ export default function ClientsPage() {
   const [total, setTotal]         = useState(0);
   const [search, setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("ALL");
   const [loading, setLoading]     = useState(true);
   const [showAdd, setShowAdd]     = useState(false);
   const [deleting, setDeleting]   = useState<string | null>(null);
@@ -579,6 +593,8 @@ export default function ClientsPage() {
     }
   };
 
+  const filteredClients = clients.filter(c => typeFilter === 'ALL' || c.clientType === typeFilter);
+
   return (
     <div className="flex h-full w-full bg-slate-50">
       <Sidebar />
@@ -606,33 +622,40 @@ export default function ClientsPage() {
         </header>
 
         {/* Search & Filter */}
-        <div className="px-8 py-3 bg-white border-b border-slate-100 shrink-0 flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
-          <div className="relative flex-1 max-w-lg">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by name, CF No, CNIC or email..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-all"
-            />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                <X size={13} />
-              </button>
-            )}
+        <div className="px-8 py-4 bg-white border-b border-slate-100 shrink-0 flex flex-col space-y-4">
+          <div className="flex gap-2">
+            <button onClick={() => setTypeFilter('ALL')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${typeFilter === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>All Clients</button>
+            <button onClick={() => setTypeFilter('TAX')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${typeFilter === 'TAX' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>Tax Clients</button>
+            <button onClick={() => setTypeFilter('LEGAL')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${typeFilter === 'LEGAL' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>Legal Clients</button>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <span className="text-xs font-bold text-slate-400 uppercase">Status:</span>
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-            >
-              <option value="">All Statuses</option>
-              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+          <div className="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
+            <div className="relative flex-1 max-w-lg">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by name, CF No, CNIC or email..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-all"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold text-slate-400 uppercase">Status:</span>
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+              >
+                <option value="">All Statuses</option>
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -654,11 +677,11 @@ export default function ClientsPage() {
                   <tr><td colSpan={COLUMNS.length + 2} className="text-center py-20 text-slate-400">
                     <Loader2 size={24} className="animate-spin inline-block mb-2" /><br />Loading...
                   </td></tr>
-                ) : clients.length === 0 && !loading ? (
+                ) : filteredClients.length === 0 && !loading ? (
                   <tr><td colSpan={COLUMNS.length + 2} className="text-center py-20 text-slate-400">
                     No clients found{search ? ` for "${search}"` : ""}.
                   </td></tr>
-                ) : clients.map((client, idx) => {
+                ) : filteredClients.map((client, idx) => {
                   return (
                     <tr
                       key={client.id}
@@ -676,9 +699,14 @@ export default function ClientsPage() {
                           ) : col.key === "status" ? (
                             <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm ${statusColor(client.status)}`}>{client.status}</span>
                           ) : col.key === "name" ? (
-                            <span className="text-sm font-bold text-slate-800 group-hover:text-amber-600 transition-all">
-                              {client.name}
-                            </span>
+                            <div className="flex items-center">
+                              <span className="text-sm font-bold text-slate-800 group-hover:text-amber-600 transition-all">
+                                {client.name}
+                              </span>
+                              {client.clientType === 'LEGAL' && (
+                                <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] rounded-full uppercase tracking-widest font-bold">Legal</span>
+                              )}
+                            </div>
                           ) : col.key === "irisPassword" ? (
                             <span className="text-xs font-mono text-slate-500">{client[col.key] || "—"}</span>
                           ) : (

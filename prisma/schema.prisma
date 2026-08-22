@@ -60,6 +60,7 @@ model Client {
   category      String?
   reference     String?
   status        String         @default("ACTIVE")
+  clientType    String         @default("TAX")  // "TAX" or "LEGAL"
   entryDate     DateTime       @default(now())
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
