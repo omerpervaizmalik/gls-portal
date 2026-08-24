@@ -8,19 +8,25 @@ export async function POST(req: NextRequest) {
 
     const currentYear = parseInt(year);
 
-    // Get active clients
+    // Get active tax clients (excluding legal clients)
     const activeClients = await prisma.client.findMany({
       where: {
-        NOT: { status: "LEFT" }
+        NOT: [
+          { status: "LEFT" },
+          { clientType: "LEGAL" }
+        ]
       }
     });
 
-    // Delete filings for left clients for this year
+    // Delete filings for left clients or legal clients for this year
     await prisma.filing.deleteMany({
       where: {
         year: currentYear,
         client: {
-          status: "LEFT"
+          OR: [
+            { status: "LEFT" },
+            { clientType: "LEGAL" }
+          ]
         }
       }
     });

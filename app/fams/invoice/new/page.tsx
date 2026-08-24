@@ -80,7 +80,7 @@ function InvoiceGeneratorContent() {
           if (Array.isArray(invoices) && invoices.length > 0) {
             // invoices are ordered by createdAt desc, so first one is latest
             const lastInvoiceNo = invoices[0].invoiceNo || "INV-0";
-            const lastNum = parseInt(lastInvoiceNo.split("-")[1] || "0");
+            const lastNum = parseInt(lastInvoiceNo.replace(/\D/g, '') || "0", 10);
             setInvoiceNo(`INV-${lastNum + 1}`);
           } else {
             setInvoiceNo("INV-1");

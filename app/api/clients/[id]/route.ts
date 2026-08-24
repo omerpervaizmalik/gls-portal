@@ -32,7 +32,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const { 
       cfNo, name, cnic, email, irisPassword, mobileNo, 
       address, city, ntn, strn, businessName, profileImage, description, category, entryDate,
-      reference, status, filings 
+      reference, status, filings, clientType
     } = body;
 
     const client = await prisma.client.update({
@@ -53,6 +53,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         entryDate: entryDate ? new Date(entryDate) : undefined,
         reference,
         status,
+        clientType: clientType || undefined,
       },
     });
 

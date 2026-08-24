@@ -38,11 +38,16 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    // 3. Sort manually by cfNo as integer (Prisma doesn't support casting in orderBy yet)
+    // 3. Sort manually by cfNo safely (supports both numeric and alphanumeric like L-1)
     const sortedClients = clients.sort((a, b) => {
-      const aNo = parseInt(a.cfNo || "0");
-      const bNo = parseInt(b.cfNo || "0");
-      return aNo - bNo;
+      const aRaw = a.cfNo || "0";
+      const bRaw = b.cfNo || "0";
+      const aIsNum = /^\d+$/.test(aRaw);
+      const bIsNum = /^\d+$/.test(bRaw);
+      if (aIsNum && bIsNum) return parseInt(aRaw, 10) - parseInt(bRaw, 10);
+      if (aIsNum) return -1;
+      if (bIsNum) return 1;
+      return aRaw.localeCompare(bRaw, undefined, { numeric: true });
     });
 
     return NextResponse.json({ clients: sortedClients, total: sortedClients.length });

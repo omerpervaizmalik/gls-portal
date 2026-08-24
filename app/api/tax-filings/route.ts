@@ -34,9 +34,14 @@ export async function GET(req: NextRequest) {
     });
     
     const sortedFilings = filings.sort((a, b) => {
-      const aNo = parseInt(a.client?.cfNo || "0");
-      const bNo = parseInt(b.client?.cfNo || "0");
-      return aNo - bNo;
+      const aRaw = a.client?.cfNo || "0";
+      const bRaw = b.client?.cfNo || "0";
+      const aIsNum = /^\d+$/.test(aRaw);
+      const bIsNum = /^\d+$/.test(bRaw);
+      if (aIsNum && bIsNum) return parseInt(aRaw, 10) - parseInt(bRaw, 10);
+      if (aIsNum) return -1;
+      if (bIsNum) return 1;
+      return aRaw.localeCompare(bRaw, undefined, { numeric: true });
     });
 
     return NextResponse.json(sortedFilings);
@@ -52,15 +57,18 @@ export async function POST(req: NextRequest) {
 
     const clients = await prisma.client.findMany({
       where: { 
-        NOT: { status: "LEFT" }
+        NOT: [
+          { status: "LEFT" },
+          { clientType: "LEGAL" }
+        ]
       }
     });
 
     for (const client of clients) {
       // Using quoted identifiers for Postgres compatibility
       await prisma.$executeRaw`
-        INSERT INTO "Filing" ("id", "clientId", "year", "status", "isContacted", "docsObtained", "isWorking", "isFiled", "isBilled", "isPaid", "billAmount", "paymentAmount", "createdAt", "updatedAt")
-        VALUES (${Math.random().toString(36).substring(7)}, ${client.id}, ${parseInt(year)}, 'PENDING', false, false, false, false, false, false, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO "Filing" ("id", "clientId", "year", "status", "isContacted", "docsObtained", "isWorking", "isDraftReady", "isFiled", "isBilled", "isPaid", "billAmount", "paymentAmount", "createdAt", "updatedAt")
+        VALUES (${Math.random().toString(36).substring(7)}, ${client.id}, ${parseInt(year)}, 'PENDING', false, false, false, false, false, false, false, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT ("clientId", "year") DO NOTHING
       `;
     }

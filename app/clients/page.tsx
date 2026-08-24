@@ -119,6 +119,7 @@ function AddClientModal({ onClose, onSave }: { onClose: () => void; onSave: () =
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{error}</div>}
           <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
             <button
+              type="button"
               onClick={() => setForm(prev => ({ ...prev, clientType: "TAX" }))}
               className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
                 form.clientType === "TAX" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
@@ -127,6 +128,7 @@ function AddClientModal({ onClose, onSave }: { onClose: () => void; onSave: () =
               Tax Client
             </button>
             <button
+              type="button"
               onClick={() => setForm(prev => ({ ...prev, clientType: "LEGAL" }))}
               className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
                 form.clientType === "LEGAL" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
@@ -593,7 +595,12 @@ export default function ClientsPage() {
     }
   };
 
-  const filteredClients = clients.filter(c => typeFilter === 'ALL' || c.clientType === typeFilter);
+  const filteredClients = clients.filter(c => {
+    if (typeFilter === 'ALL') return true;
+    if (typeFilter === 'TAX') return c.clientType === 'TAX' || !c.clientType;
+    if (typeFilter === 'LEGAL') return c.clientType === 'LEGAL';
+    return true;
+  });
 
   return (
     <div className="flex h-full w-full bg-slate-50">
