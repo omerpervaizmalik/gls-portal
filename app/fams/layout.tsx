@@ -8,13 +8,13 @@ import Sidebar from "@/components/Sidebar";
 
 export default function FamsLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === 'ADMIN';
+  const isClient = session?.user?.role === 'CLIENT';
 
   return (
     <div className="flex h-screen overflow-hidden w-full print:h-auto print:overflow-visible print:block">
       <Sidebar />
       <div className="flex flex-col h-full bg-slate-50 flex-1 overflow-x-auto md:overflow-x-hidden print:h-auto print:overflow-visible print:block">
-        {isAdmin && (
+        {!isClient && (
           <header className="print:hidden bg-white border-b border-slate-200 px-4 md:px-6 py-3 md:py-4 shrink-0 flex flex-col md:flex-row md:items-center shadow-sm w-full space-y-3 md:space-y-0">
             <div className="flex items-center">
               <Wallet className="w-5 h-5 md:w-6 md:h-6 text-amber-500 mr-2 md:mr-3" />

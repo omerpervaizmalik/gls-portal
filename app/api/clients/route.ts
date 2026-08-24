@@ -68,7 +68,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Name is required" }, { status: 400 });
       }
 
-      const result = await prisma.$queryRaw`SELECT "cfNo" FROM "Client" WHERE "cfNo" LIKE 'L-%' ORDER BY CAST(SUBSTRING("cfNo" FROM 3) AS INTEGER) DESC LIMIT 1`;
+      const result = await prisma.$queryRaw`
+        SELECT "cfNo" 
+        FROM "Client" 
+        WHERE "cfNo" ~ '^L-[0-9]+$' 
+        ORDER BY CAST(SUBSTRING("cfNo" FROM 3) AS INTEGER) DESC 
+        LIMIT 1
+      `;
       if (Array.isArray(result) && result.length > 0 && (result as any)[0].cfNo) {
         const currentHighest = parseInt(((result as any)[0].cfNo as string).substring(2), 10);
         finalCfNo = `L-${currentHighest + 1}`;

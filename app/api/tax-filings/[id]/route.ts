@@ -11,7 +11,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const body = await req.json();
     
     const { 
-      status, isContacted, docsObtained, isWorking, isFiled, isBilled, isPaid, 
+      status, isContacted, docsObtained, isWorking, isDraftReady, isFiled, isBilled, isPaid, 
       billAmount, paymentAmount, notes, filledBy 
     } = body;
 
@@ -22,12 +22,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       where: { id },
       data: {
         status: status || undefined,
-        isContacted: typeof isContacted === 'boolean' ? isContacted : !!isContacted,
-        docsObtained: typeof docsObtained === 'boolean' ? docsObtained : !!docsObtained,
-        isWorking: typeof isWorking === 'boolean' ? isWorking : !!isWorking,
-        isFiled: typeof isFiled === 'boolean' ? isFiled : !!isFiled,
-        isBilled: typeof isBilled === 'boolean' ? isBilled : !!isBilled,
-        isPaid: typeof isPaid === 'boolean' ? isPaid : !!isPaid,
+        isContacted: isContacted !== undefined ? (typeof isContacted === 'boolean' ? isContacted : !!isContacted) : undefined,
+        docsObtained: docsObtained !== undefined ? (typeof docsObtained === 'boolean' ? docsObtained : !!docsObtained) : undefined,
+        isWorking: isWorking !== undefined ? (typeof isWorking === 'boolean' ? isWorking : !!isWorking) : undefined,
+        isDraftReady: isDraftReady !== undefined ? (typeof isDraftReady === 'boolean' ? isDraftReady : !!isDraftReady) : undefined,
+        isFiled: isFiled !== undefined ? (typeof isFiled === 'boolean' ? isFiled : !!isFiled) : undefined,
+        isBilled: isBilled !== undefined ? (typeof isBilled === 'boolean' ? isBilled : !!isBilled) : undefined,
+        isPaid: isPaid !== undefined ? (typeof isPaid === 'boolean' ? isPaid : !!isPaid) : undefined,
         billAmount: billAmount !== undefined ? parseFloat(billAmount.toString()) : undefined,
         paymentAmount: paymentAmount !== undefined ? parseFloat(paymentAmount.toString()) : undefined,
         notes: notes !== undefined ? notes : undefined,

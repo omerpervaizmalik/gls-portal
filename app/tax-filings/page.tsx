@@ -174,13 +174,17 @@ export default function TaxFilingsPage() {
       if (!filing) return;
 
       const body = { ...filing, ...updates };
-      await fetch(`/api/tax-filings/${id}`, {
+      const res = await fetch(`/api/tax-filings/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
       });
-    } catch (e) {
-      alert("Failed to save changes");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save");
+      }
+    } catch (e: any) {
+      alert(e.message || "Failed to save changes");
       fetchFilings();
     } finally {
       setSavingId(null);

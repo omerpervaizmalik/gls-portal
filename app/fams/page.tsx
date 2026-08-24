@@ -61,17 +61,17 @@ export default async function FamsDashboard({ searchParams }: { searchParams: { 
     openingBalance = (prevIncome._sum.amount || 0) - (prevExpenses._sum.amount || 0);
   }
 
-  // Fetch clients with negative balances, sorted by CF No
+  // Fetch clients with negative balances, sorted by CF No safely
   const taxResults = await prisma.$queryRaw`
     SELECT * FROM "Client"
     WHERE "clientType" = 'TAX' OR "clientType" IS NULL
-    ORDER BY CAST("cfNo" AS INTEGER) ASC
+    ORDER BY CASE WHEN "cfNo" ~ '^[0-9]+$' THEN CAST("cfNo" AS INTEGER) ELSE 999999 END ASC, "cfNo" ASC
   `;
 
   const legalResults = await prisma.$queryRaw`
     SELECT * FROM "Client"
     WHERE "clientType" = 'LEGAL'
-    ORDER BY CAST("cfNo" AS INTEGER) ASC
+    ORDER BY CASE WHEN "cfNo" ~ '^L-[0-9]+$' THEN CAST(SUBSTRING("cfNo" FROM 3) AS INTEGER) ELSE 999999 END ASC, "cfNo" ASC
   `;
   
   // Since we need ledger entries, we'll fetch them for these clients

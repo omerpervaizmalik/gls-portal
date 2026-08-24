@@ -44,6 +44,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobileApp, setIsMobileApp] = useState(false);
   const isAdmin = session?.user?.role === 'ADMIN';
+  const isStaffOrAdmin = session?.user?.role !== 'CLIENT';
 
   useEffect(() => {
     setIsMobileApp(isNative());
@@ -112,7 +113,7 @@ export default function Sidebar() {
               </Link>
             ))}
 
-            {isAdmin && (
+            {isStaffOrAdmin && (
               <div className="pt-6 mt-6 border-t border-slate-800/50">
                 <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Administration</p>
                 <Link

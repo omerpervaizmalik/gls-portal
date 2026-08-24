@@ -10,7 +10,11 @@ import { ClientOrWalkinSelect } from "./ClientOrWalkinSelect";
 export default async function NewIncomePage() {
   const clients = await prisma.$queryRaw`
     SELECT id, name, "cfNo" FROM "Client"
-    ORDER BY CAST("cfNo" AS INTEGER) ASC
+    ORDER BY CASE 
+      WHEN "cfNo" ~ '^[0-9]+$' THEN CAST("cfNo" AS INTEGER) 
+      WHEN "cfNo" ~ '^L-[0-9]+$' THEN 100000 + CAST(SUBSTRING("cfNo" FROM 3) AS INTEGER)
+      ELSE 999999 
+    END ASC, "cfNo" ASC
   ` as any[];
 
   async function createIncome(formData: FormData) {

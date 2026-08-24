@@ -17,13 +17,13 @@ export default async function LedgerIndexPage({ searchParams }: { searchParams: 
     clientsResults = await prisma.$queryRaw`
       SELECT * FROM "Client"
       WHERE "clientType" = 'LEGAL'
-      ORDER BY CAST("cfNo" AS INTEGER) ASC
+      ORDER BY CASE WHEN "cfNo" ~ '^L-[0-9]+$' THEN CAST(SUBSTRING("cfNo" FROM 3) AS INTEGER) ELSE 999999 END ASC, "cfNo" ASC
     `;
   } else {
     clientsResults = await prisma.$queryRaw`
       SELECT * FROM "Client"
       WHERE "clientType" = 'TAX' OR "clientType" IS NULL
-      ORDER BY CAST("cfNo" AS INTEGER) ASC
+      ORDER BY CASE WHEN "cfNo" ~ '^[0-9]+$' THEN CAST("cfNo" AS INTEGER) ELSE 999999 END ASC, "cfNo" ASC
     `;
   }
   
