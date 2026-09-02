@@ -255,7 +255,11 @@ export default function TaxFilingsPage() {
   const stats = {
     total: filings.length,
     contacted: filings.filter(f => f.isContacted).length,
+    docsObtained: filings.filter(f => f.docsObtained).length,
+    working: filings.filter(f => f.isWorking).length,
+    draftReady: filings.filter(f => f.isDraftReady).length,
     filed: filings.filter(f => f.isFiled).length,
+    billed: filings.filter(f => f.isBilled).length,
     paid: filings.filter(f => f.isPaid).length,
   };
 
@@ -325,11 +329,75 @@ export default function TaxFilingsPage() {
         </header>
 
         {/* Stats Row */}
-        <div className="px-4 md:px-8 py-4 md:py-6 grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 bg-white border-b border-slate-100 shrink-0">
-          <StatCard icon={Calendar} label="Total" value={stats.total} color="blue" />
-          <StatCard icon={PhoneCall} label="Called" value={stats.contacted} color="amber" />
-          <StatCard icon={CheckCircle2} label="Filed" value={stats.filed} color="emerald" />
-          {isAdmin && <StatCard icon={CreditCard} label="Paid" value={stats.paid} color="purple" />}
+        <div className={`px-3 md:px-6 py-3 md:py-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${isAdmin ? 'xl:grid-cols-8' : 'xl:grid-cols-6'} gap-2.5 md:gap-3 bg-white border-b border-slate-100 shrink-0`}>
+          <StatCard 
+            icon={Calendar} 
+            label="Total" 
+            value={stats.total} 
+            color="blue" 
+            active={stageFilter === "ALL"}
+            onClick={() => setStageFilter("ALL")}
+          />
+          <StatCard 
+            icon={PhoneCall} 
+            label="Called" 
+            value={stats.contacted} 
+            color="amber" 
+            active={stageFilter === "CONTACTED"}
+            onClick={() => setStageFilter(stageFilter === "CONTACTED" ? "ALL" : "CONTACTED")}
+          />
+          <StatCard 
+            icon={FileSearch} 
+            label="Docs" 
+            value={stats.docsObtained} 
+            color="blue" 
+            active={stageFilter === "DOCS"}
+            onClick={() => setStageFilter(stageFilter === "DOCS" ? "ALL" : "DOCS")}
+          />
+          <StatCard 
+            icon={Clock} 
+            label="Working" 
+            value={stats.working} 
+            color="indigo" 
+            active={stageFilter === "WORKING"}
+            onClick={() => setStageFilter(stageFilter === "WORKING" ? "ALL" : "WORKING")}
+          />
+          <StatCard 
+            icon={CheckSquare} 
+            label="Draft Ready" 
+            value={stats.draftReady} 
+            color="cyan" 
+            active={stageFilter === "DRAFT_READY"}
+            onClick={() => setStageFilter(stageFilter === "DRAFT_READY" ? "ALL" : "DRAFT_READY")}
+          />
+          <StatCard 
+            icon={CheckCircle2} 
+            label="Filed" 
+            value={stats.filed} 
+            color="emerald" 
+            active={stageFilter === "FILED"}
+            onClick={() => setStageFilter(stageFilter === "FILED" ? "ALL" : "FILED")}
+          />
+          {isAdmin && (
+            <>
+              <StatCard 
+                icon={FileText} 
+                label="Billed" 
+                value={stats.billed} 
+                color="purple" 
+                active={stageFilter === "BILLED"}
+                onClick={() => setStageFilter(stageFilter === "BILLED" ? "ALL" : "BILLED")}
+              />
+              <StatCard 
+                icon={CreditCard} 
+                label="Paid" 
+                value={stats.paid} 
+                color="rose" 
+                active={stageFilter === "PAID"}
+                onClick={() => setStageFilter(stageFilter === "PAID" ? "ALL" : "PAID")}
+              />
+            </>
+          )}
         </div>
 
         {/* Search & Actions Bar */}
@@ -577,24 +645,49 @@ export default function TaxFilingsPage() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, color }: { icon: any, label: string, value: number, color: string }) {
-  const colors: any = {
-    blue: "bg-blue-500/10 text-blue-600",
-    amber: "bg-amber-500/10 text-amber-600",
-    emerald: "bg-emerald-500/10 text-emerald-600",
-    purple: "bg-purple-500/10 text-purple-600"
+function StatCard({ 
+  icon: Icon, 
+  label, 
+  value, 
+  color, 
+  active = false,
+  onClick 
+}: { 
+  icon: any, 
+  label: string, 
+  value: number, 
+  color: string, 
+  active?: boolean,
+  onClick?: () => void 
+}) {
+  const iconColors: Record<string, string> = {
+    blue: "bg-blue-50 text-blue-600 border border-blue-200/50",
+    amber: "bg-amber-50 text-amber-600 border border-amber-200/50",
+    cyan: "bg-cyan-50 text-cyan-600 border border-cyan-200/50",
+    indigo: "bg-indigo-50 text-indigo-600 border border-indigo-200/50",
+    emerald: "bg-emerald-50 text-emerald-600 border border-emerald-200/50",
+    purple: "bg-purple-50 text-purple-600 border border-purple-200/50",
+    rose: "bg-rose-50 text-rose-600 border border-rose-200/50"
   };
   
   return (
-    <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center space-x-4">
-      <div className={`p-3 rounded-xl ${colors[color]}`}>
-        <Icon size={20} />
+    <button 
+      type="button"
+      onClick={onClick}
+      className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all duration-200 flex items-center space-x-2 w-full ${
+        active 
+          ? "bg-amber-50/70 border-amber-400 shadow-sm ring-2 ring-amber-400/20" 
+          : "bg-slate-50/80 hover:bg-slate-100 border-slate-200/70 hover:border-slate-300"
+      }`}
+    >
+      <div className={`p-1.5 sm:p-2 rounded-lg shrink-0 ${iconColors[color] || iconColors.blue}`}>
+        <Icon size={15} />
       </div>
-      <div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
+      <div className="min-w-0 flex-1">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider truncate leading-tight">{label}</p>
+        <p className="text-sm sm:text-base font-bold text-slate-900 leading-none mt-1">{value}</p>
       </div>
-    </div>
+    </button>
   );
 }
 
