@@ -230,6 +230,10 @@ function InvoiceGeneratorContent() {
             size: A4;
             margin: 0;
           }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           body * {
             visibility: hidden;
           }
@@ -561,27 +565,9 @@ GLS AI Assistant`;
           </table>
         </div>
 
-        {/* Totals & Payment Details Section */}
-        <div className={`flex justify-between items-start text-sm ${isVeryCompact ? 'mb-2' : isCompact ? 'mb-4' : 'mb-8'}`}>
-          {/* Company Bank & Payment Details */}
-          <div className={`w-[48%] bg-slate-50 rounded-xl border border-slate-200/80 ${isVeryCompact ? 'p-2 text-[9px]' : isCompact ? 'p-3 text-[10px]' : 'p-4 text-xs'}`}>
-            <p className="font-bold text-slate-800 uppercase tracking-wider mb-2 text-[10px]">Payment Details</p>
-            <div className="space-y-1.5 text-slate-700">
-              <div>
-                <p className="font-bold text-slate-900 leading-tight">UBL ACCOUNT</p>
-                <p className="font-mono font-semibold text-slate-800 tracking-wider">PK27UNIL0109000315815522</p>
-                <p className="text-[10px] text-slate-500 font-medium">Get Legal Solution</p>
-              </div>
-              <div className="pt-1.5 border-t border-slate-200">
-                <p className="font-bold text-slate-900 leading-tight">Jazz Cash</p>
-                <p className="font-mono font-semibold text-slate-800">03010407809</p>
-                <p className="text-[10px] text-slate-500 font-medium">Pervaiz Malik</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Totals Box */}
-          <div className={`w-[48%] bg-slate-50 rounded-xl border border-slate-100 ${isVeryCompact ? 'p-2' : isCompact ? 'p-3' : 'p-4'}`}>
+        {/* Totals Section */}
+        <div className={`flex justify-end text-sm ${isVeryCompact ? 'mb-2' : isCompact ? 'mb-4' : 'mb-6'}`}>
+          <div className={`w-1/2 bg-slate-50 rounded-xl border border-slate-200 ${isVeryCompact ? 'p-2' : isCompact ? 'p-3' : 'p-4'}`}>
             <div className={`flex justify-between items-center text-slate-600 ${isVeryCompact ? 'mb-1 text-[10px]' : 'mb-2'}`}>
               <span>Subtotal:</span>
               <span>Rs. {totalAmount.toLocaleString()}</span>
@@ -597,13 +583,58 @@ GLS AI Assistant`;
           </div>
         </div>
 
-        {/* Footer */}
-        <div className={`mt-auto text-slate-500 ${isVeryCompact ? 'pt-2 text-[9px]' : isCompact ? 'pt-4 text-[10px]' : 'pt-8 text-xs'}`}>
-          <div className={`text-center border-b border-slate-200 ${isVeryCompact ? 'pb-2 mb-2' : isCompact ? 'pb-3 mb-3' : 'pb-4 mb-4'}`}>
-            <p className="font-bold text-slate-600 italic">This is a computer-generated invoice and does not require a physical signature.</p>
+        {/* Bottom / Footer: Payment & Bank Details */}
+        <div className={`mt-auto ${isVeryCompact ? 'pt-2' : isCompact ? 'pt-3' : 'pt-5'}`}>
+          {/* Letterhead Account Details Box */}
+          <div className={`border-2 border-amber-500 rounded-xl bg-amber-50/20 overflow-hidden ${isVeryCompact ? 'mb-2 p-2' : isCompact ? 'mb-2.5 p-2.5' : 'mb-3 p-3.5'}`}>
+            <div className="flex items-center justify-between border-b border-amber-200 pb-1.5 mb-2">
+              <p className="font-black text-slate-900 uppercase tracking-widest text-[10px] sm:text-xs">
+                Official Account & Payment Details
+              </p>
+              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                Get Legal Solution
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="bg-white border border-amber-200/80 rounded-lg p-2.5 shadow-sm">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">
+                  Bank Account (UBL)
+                </span>
+                <p className="font-mono font-black text-slate-900 text-sm tracking-wider my-0.5">
+                  PK27UNIL0109000315815522
+                </p>
+                <p className="text-[11px] text-slate-600 font-medium">
+                  Account Title: <span className="font-bold text-slate-800">Get Legal Solution</span>
+                </p>
+              </div>
+
+              <div className="bg-white border border-amber-200/80 rounded-lg p-2.5 shadow-sm">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">
+                  Jazz Cash
+                </span>
+                <p className="font-mono font-black text-slate-900 text-sm tracking-wider my-0.5">
+                  03010407809
+                </p>
+                <p className="text-[11px] text-slate-600 font-medium">
+                  Account Title: <span className="font-bold text-slate-800">Pervaiz Malik</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-2 pt-1.5 border-t border-amber-200/70 flex flex-wrap justify-between items-center text-[10px] text-slate-600">
+              <span className="font-semibold italic text-slate-700">
+                Please pay your bill and send screenshot as soon as possible.
+              </span>
+              <span className="font-bold text-slate-800">Regards, GLS AI Assistant</span>
+            </div>
+          </div>
+
+          <div className={`text-center border-b border-slate-200 ${isVeryCompact ? 'pb-1 mb-1' : isCompact ? 'pb-1.5 mb-1.5' : 'pb-2 mb-2'}`}>
+            <p className="font-bold text-slate-500 italic text-[10px]">This is a computer-generated invoice and does not require a physical signature.</p>
           </div>
           
-          <div className={`text-center ${isVeryCompact ? 'text-[8px]' : 'text-[10px]'}`}>
+          <div className={`text-center text-slate-500 ${isVeryCompact ? 'text-[8px]' : 'text-[10px]'}`}>
             <p>Thank you for choosing Get Legal Solution. All payments are due within 15 days of invoice date.</p>
             <p className="mt-0.5">Please make cheques or online transfers payable to "Get Legal Solution".</p>
           </div>
