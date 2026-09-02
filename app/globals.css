@@ -28,6 +28,13 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
+@media print {
+  html, body, body > div {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+}
+
 /* Mobile App Specific Overrides */
 body.mobile-app {
   /* Dynamic padding handled by layout */

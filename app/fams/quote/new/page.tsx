@@ -176,6 +176,24 @@ function QuotationGeneratorContent() {
             size: A4;
             margin: 0;
           }
+          html, body {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            overflow: visible !important;
+          }
+          body > div {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           body * {
             visibility: hidden;
           }
@@ -186,11 +204,15 @@ function QuotationGeneratorContent() {
             position: absolute;
             left: 0;
             top: 0;
-            width: 100%;
+            width: 100% !important;
+            min-height: 297mm !important;
+            height: 100% !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
             margin: 0 !important;
             padding: 10mm !important;
             box-shadow: none !important;
-            min-height: auto !important;
+            box-sizing: border-box !important;
           }
           ::-webkit-scrollbar {
             display: none;
