@@ -58,7 +58,27 @@ function QuotationGeneratorContent() {
       }).catch(e => console.error(e));
   }, [clientId, quoteId]);
 
+  const getQuoteFileName = () => {
+    const descSummary = items
+      .map(i => i.description?.trim())
+      .filter(Boolean)
+      .join(' - ') || 'Quotation';
+    const cleanDesc = descSummary.replace(/[\\/:*?"<>|]/g, '-').trim();
+    const cleanClient = (clientData?.name || '').replace(/[\\/:*?"<>|]/g, '-').trim();
+    const fullName = cleanClient ? `Quotation - ${cleanClient} - ${cleanDesc}` : `Quotation - ${cleanDesc}`;
+    return fullName.length > 80 ? fullName.substring(0, 80).trim() : fullName;
+  };
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = getQuoteFileName();
+    }
+  }, [clientData, items]);
+
   const handlePrint = () => {
+    if (typeof document !== 'undefined') {
+      document.title = getQuoteFileName();
+    }
     window.print();
   };
 

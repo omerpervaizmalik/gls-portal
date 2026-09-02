@@ -126,7 +126,27 @@ function InvoiceGeneratorContent() {
       }).catch(e => console.error(e));
   }, [clientId, invoiceId]);
 
+  const getInvoiceFileName = () => {
+    const descSummary = items
+      .map(i => i.description?.trim())
+      .filter(Boolean)
+      .join(' - ') || 'Legal Services';
+    const cleanDesc = descSummary.replace(/[\\/:*?"<>|]/g, '-').trim();
+    const cleanInvoiceNo = (invoiceNo || 'INV').replace(/[\\/:*?"<>|]/g, '-').trim();
+    const fullName = `${cleanInvoiceNo} - ${cleanDesc}`;
+    return fullName.length > 80 ? fullName.substring(0, 80).trim() : fullName;
+  };
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = getInvoiceFileName();
+    }
+  }, [invoiceNo, items]);
+
   const handlePrint = () => {
+    if (typeof document !== 'undefined') {
+      document.title = getInvoiceFileName();
+    }
     window.print();
   };
 
