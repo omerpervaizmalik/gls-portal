@@ -83,21 +83,28 @@ export default async function FamsDashboard({ searchParams }: { searchParams: { 
     where: { clientId: { in: allClientIds } }
   });
 
-  const taxClientsWithBalance = (taxResults as any[]).map(c => {
+  const allTaxWithBalance = (taxResults as any[]).map(c => {
     const entries = ledgerEntries.filter(e => e.clientId === c.id);
     const balance = entries.reduce((acc, entry) => {
       return entry.type === 'DEBIT' ? acc - entry.amount : acc + entry.amount;
     }, 0);
     return { ...c, balance };
-  }).filter(c => c.balance < 0).slice(0, 10);
+  }).filter(c => c.balance < 0);
 
-  const legalClientsWithBalance = (legalResults as any[]).map(c => {
+  const allLegalWithBalance = (legalResults as any[]).map(c => {
     const entries = ledgerEntries.filter(e => e.clientId === c.id);
     const balance = entries.reduce((acc, entry) => {
       return entry.type === 'DEBIT' ? acc - entry.amount : acc + entry.amount;
     }, 0);
     return { ...c, balance };
-  }).filter(c => c.balance < 0).slice(0, 10);
+  }).filter(c => c.balance < 0);
+
+  const totalTaxReceivables = allTaxWithBalance.reduce((sum, c) => sum + Math.abs(c.balance), 0);
+  const totalLegalReceivables = allLegalWithBalance.reduce((sum, c) => sum + Math.abs(c.balance), 0);
+  const totalReceivables = totalTaxReceivables + totalLegalReceivables;
+
+  const taxClientsWithBalance = allTaxWithBalance.slice(0, 10);
+  const legalClientsWithBalance = allLegalWithBalance.slice(0, 10);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -130,12 +137,12 @@ export default async function FamsDashboard({ searchParams }: { searchParams: { 
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
           <div className="relative">
             <p className="text-sm font-medium text-slate-500">Total Income</p>
-            <h3 className="text-3xl font-bold text-slate-800 mt-2 flex items-center">
+            <h3 className="text-2xl md:text-3xl font-bold text-slate-800 mt-2 flex items-center">
               Rs. {totalIncome.toLocaleString()}
             </h3>
             <div className="flex items-center mt-4 text-emerald-600 bg-emerald-50 w-max px-2 py-1 rounded text-xs font-medium">
@@ -149,7 +156,7 @@ export default async function FamsDashboard({ searchParams }: { searchParams: { 
           <div className="absolute top-0 right-0 w-32 h-32 bg-rose-50 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
           <div className="relative">
             <p className="text-sm font-medium text-slate-500">Total Expenses</p>
-            <h3 className="text-3xl font-bold text-slate-800 mt-2 flex items-center">
+            <h3 className="text-2xl md:text-3xl font-bold text-slate-800 mt-2 flex items-center">
               Rs. {totalExpenses.toLocaleString()}
             </h3>
             <div className="flex items-center mt-4 text-rose-600 bg-rose-50 w-max px-2 py-1 rounded text-xs font-medium">
@@ -163,7 +170,7 @@ export default async function FamsDashboard({ searchParams }: { searchParams: { 
           <div className="absolute top-0 right-0 w-32 h-32 bg-slate-800 rounded-bl-full -mr-16 -mt-16"></div>
           <div className="relative">
             <p className="text-sm font-medium text-slate-400">Net Balance</p>
-            <h3 className="text-3xl font-bold text-white mt-2 flex items-center">
+            <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 flex items-center">
               Rs. {netBalance.toLocaleString()}
             </h3>
             <div className="flex items-center mt-4 text-slate-300 text-xs font-medium">
@@ -171,6 +178,25 @@ export default async function FamsDashboard({ searchParams }: { searchParams: { 
             </div>
           </div>
         </div>
+
+        <Link href="/fams/ledger" className="bg-white p-6 rounded-xl border border-amber-200 hover:border-amber-400 shadow-sm relative overflow-hidden group transition-all">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-100/60 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
+          <div className="relative">
+            <p className="text-sm font-medium text-slate-500">To Be Collected</p>
+            <h3 className="text-2xl md:text-3xl font-bold text-amber-600 mt-2 flex items-center">
+              Rs. {totalReceivables.toLocaleString()}
+            </h3>
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center text-amber-800 bg-amber-50 px-2 py-1 rounded text-xs font-semibold">
+                <AlertCircle className="w-3 h-3 mr-1 text-amber-600" />
+                Pending Dues
+              </div>
+              <span className="text-[11px] text-slate-400 font-medium">
+                {allTaxWithBalance.length + allLegalWithBalance.length} clients
+              </span>
+            </div>
+          </div>
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-2 md:gap-3">
@@ -191,11 +217,16 @@ export default async function FamsDashboard({ searchParams }: { searchParams: { 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col">
           <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-semibold text-slate-800 flex items-center">
-              <AlertCircle className="w-5 h-5 text-amber-500 mr-2" />
-              Pending Dues
-            </h3>
-            <Link href="/fams/ledger" className="text-sm text-amber-600 hover:text-amber-700 font-medium">View All</Link>
+            <div className="flex items-center space-x-2">
+              <h3 className="font-semibold text-slate-800 flex items-center">
+                <AlertCircle className="w-5 h-5 text-amber-500 mr-2" />
+                Pending Dues
+              </h3>
+              <span className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full">
+                Rs. {totalTaxReceivables.toLocaleString()}
+              </span>
+            </div>
+            <Link href="/fams/ledger?type=TAX" className="text-sm text-amber-600 hover:text-amber-700 font-medium">View All</Link>
           </div>
           <div className="p-0 flex-1">
             {taxClientsWithBalance.length === 0 ? (
@@ -226,11 +257,16 @@ export default async function FamsDashboard({ searchParams }: { searchParams: { 
 
         <div className="bg-white rounded-xl border border-amber-200 shadow-sm flex flex-col">
           <div className="p-6 border-b border-amber-100 flex items-center justify-between bg-amber-50 rounded-t-xl">
-            <h3 className="font-semibold text-amber-900 flex items-center">
-              <AlertCircle className="w-5 h-5 text-amber-600 mr-2" />
-              Legal Clients — Pending Dues
-            </h3>
-            <Link href="/fams/ledger" className="text-sm text-amber-700 hover:text-amber-800 font-medium">View All</Link>
+            <div className="flex items-center space-x-2">
+              <h3 className="font-semibold text-amber-900 flex items-center">
+                <AlertCircle className="w-5 h-5 text-amber-600 mr-2" />
+                Legal Clients — Pending Dues
+              </h3>
+              <span className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                Rs. {totalLegalReceivables.toLocaleString()}
+              </span>
+            </div>
+            <Link href="/fams/ledger?type=LEGAL" className="text-sm text-amber-700 hover:text-amber-800 font-medium">View All</Link>
           </div>
           <div className="p-0 flex-1">
             {legalClientsWithBalance.length === 0 ? (
