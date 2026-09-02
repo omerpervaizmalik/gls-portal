@@ -294,9 +294,35 @@ function InvoiceGeneratorContent() {
 
           <button 
             onClick={() => {
-              let itemList = items.map((i, idx) => `${idx + 1}. ${i.description || 'Service'} - Rs. ${i.amount || 0}`).join('%0A');
-              const text = `*INVOICE: ${invoiceNo}*%0A*From:* Get Legal Solution%0A*Billed To:* ${clientData?.name || 'Client'}%0A*Date:* ${invoiceDate}%0A------------------------%0A${itemList}%0A------------------------%0A*Total Due: Rs. ${totalAmount.toLocaleString()}*%0A%0A_Please find the detailed PDF attached or contact us to clear the payment._`;
-              const url = `https://wa.me/?text=${text}`;
+              const itemList = items.map((i, idx) => `${idx + 1}. ${i.description || 'Service'} - Rs. ${Number(i.amount || 0).toLocaleString()}`).join('\n');
+              const message = `*INVOICE: ${invoiceNo}*
+*From:* Get Legal Solution
+*Billed To:* ${clientData?.name || 'Client'}
+*Date:* ${invoiceDate}
+------------------------
+${itemList}
+------------------------
+*Total Due: Rs. ${totalAmount.toLocaleString()}*
+
+*Payment Details:*
+*UBL ACCOUNT*
+PK27UNIL0109000315815522
+Get Legal Solution
+
+*Jazz Cash*
+03010407809
+Pervaiz Malik
+
+Please pay your bill and send screenshot as soon as possible.
+
+Regards,
+GLS AI Assistant`;
+
+              const cleanNumber = (clientData?.mobileNo || '').replace(/[^0-9]/g, '');
+              const finalNumber = cleanNumber ? (cleanNumber.startsWith('0') ? '92' + cleanNumber.substring(1) : cleanNumber) : '';
+              const url = finalNumber 
+                ? `https://wa.me/${finalNumber}?text=${encodeURIComponent(message)}`
+                : `https://wa.me/?text=${encodeURIComponent(message)}`;
               window.open(url, '_blank');
             }}
             className="px-4 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-lg text-sm font-bold flex items-center shadow-lg shadow-emerald-500/20 transition-all"
@@ -535,9 +561,27 @@ function InvoiceGeneratorContent() {
           </table>
         </div>
 
-        {/* Totals Section */}
-        <div className={`flex justify-end text-sm ${isVeryCompact ? 'mb-2' : isCompact ? 'mb-4' : 'mb-10'}`}>
-          <div className={`w-1/2 bg-slate-50 rounded-xl border border-slate-100 ${isVeryCompact ? 'p-2' : isCompact ? 'p-3' : 'p-4'}`}>
+        {/* Totals & Payment Details Section */}
+        <div className={`flex justify-between items-start text-sm ${isVeryCompact ? 'mb-2' : isCompact ? 'mb-4' : 'mb-8'}`}>
+          {/* Company Bank & Payment Details */}
+          <div className={`w-[48%] bg-slate-50 rounded-xl border border-slate-200/80 ${isVeryCompact ? 'p-2 text-[9px]' : isCompact ? 'p-3 text-[10px]' : 'p-4 text-xs'}`}>
+            <p className="font-bold text-slate-800 uppercase tracking-wider mb-2 text-[10px]">Payment Details</p>
+            <div className="space-y-1.5 text-slate-700">
+              <div>
+                <p className="font-bold text-slate-900 leading-tight">UBL ACCOUNT</p>
+                <p className="font-mono font-semibold text-slate-800 tracking-wider">PK27UNIL0109000315815522</p>
+                <p className="text-[10px] text-slate-500 font-medium">Get Legal Solution</p>
+              </div>
+              <div className="pt-1.5 border-t border-slate-200">
+                <p className="font-bold text-slate-900 leading-tight">Jazz Cash</p>
+                <p className="font-mono font-semibold text-slate-800">03010407809</p>
+                <p className="text-[10px] text-slate-500 font-medium">Pervaiz Malik</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Totals Box */}
+          <div className={`w-[48%] bg-slate-50 rounded-xl border border-slate-100 ${isVeryCompact ? 'p-2' : isCompact ? 'p-3' : 'p-4'}`}>
             <div className={`flex justify-between items-center text-slate-600 ${isVeryCompact ? 'mb-1 text-[10px]' : 'mb-2'}`}>
               <span>Subtotal:</span>
               <span>Rs. {totalAmount.toLocaleString()}</span>
@@ -561,7 +605,7 @@ function InvoiceGeneratorContent() {
           
           <div className={`text-center ${isVeryCompact ? 'text-[8px]' : 'text-[10px]'}`}>
             <p>Thank you for choosing Get Legal Solution. All payments are due within 15 days of invoice date.</p>
-            <p className="mt-0.5">Please make cheques payable to "Get Legal Solution".</p>
+            <p className="mt-0.5">Please make cheques or online transfers payable to "Get Legal Solution".</p>
           </div>
         </div>
 
