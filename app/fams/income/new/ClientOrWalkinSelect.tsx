@@ -1,16 +1,68 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { Search, X, ChevronDown, UserPlus, Check, UserX, Loader2 } from "lucide-react";
 import SearchableCategorySelect from "@/components/SearchableCategorySelect";
 import { SERVICE_CATEGORY_GROUPS } from "@/app/clients/constants";
 
 export function ClientOrWalkinSelect({ clients }: { clients: any[] }) {
   const [localClients, setLocalClients] = useState(clients);
-  const [clientId, setClientId] = useState("");
+  const [selectedClient, setSelectedClient] = useState<any | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [isQuickRegister, setIsQuickRegister] = useState(false);
+
   const [qrName, setQrName] = useState("");
   const [qrPhone, setQrPhone] = useState("");
   const [qrCategory, setQrCategory] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        if (selectedClient) {
+          setSearchTerm(`${selectedClient.name}${selectedClient.cfNo ? ` (${selectedClient.cfNo})` : ""}`);
+        } else {
+          setSearchTerm("");
+        }
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [selectedClient]);
+
+  const handleSelectClient = (client: any) => {
+    setSelectedClient(client);
+    setSearchTerm(`${client.name}${client.cfNo ? ` (${client.cfNo})` : ""}`);
+    setIsQuickRegister(false);
+    setIsOpen(false);
+  };
+
+  const handleSelectWalkin = () => {
+    setSelectedClient(null);
+    setSearchTerm("");
+    setIsQuickRegister(false);
+    setIsOpen(false);
+  };
+
+  const handleOpenQuickRegister = (initialName: string = "") => {
+    setSelectedClient(null);
+    setSearchTerm("");
+    setQrName(initialName);
+    setIsQuickRegister(true);
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setSelectedClient(null);
+    setSearchTerm("");
+    setIsQuickRegister(false);
+    setIsOpen(true);
+  };
 
   const handleRegister = async () => {
     if (!qrName) return;
@@ -23,8 +75,10 @@ export function ClientOrWalkinSelect({ clients }: { clients: any[] }) {
       });
       if (res.ok) {
         const newClient = await res.json();
-        setLocalClients(prev => [...prev, newClient]);
-        setClientId(newClient.id);
+        setLocalClients(prev => [newClient, ...prev]);
+        setSelectedClient(newClient);
+        setSearchTerm(`${newClient.name}${newClient.cfNo ? ` (${newClient.cfNo})` : ""}`);
+        setIsQuickRegister(false);
         setQrName("");
         setQrPhone("");
         setQrCategory("");
@@ -36,30 +90,165 @@ export function ClientOrWalkinSelect({ clients }: { clients: any[] }) {
     }
   };
 
+  // Filter clients based on user typing
+  const cleanTerm = searchTerm.toLowerCase().trim();
+  const filteredClients = localClients.filter(c => {
+    if (!cleanTerm) return true;
+    const nameMatch = c.name?.toLowerCase().includes(cleanTerm);
+    const cfMatch = c.cfNo ? String(c.cfNo).toLowerCase().includes(cleanTerm) : false;
+    return nameMatch || cfMatch;
+  });
+
+  const clientId = selectedClient?.id || "";
+
   return (
     <>
-      <input type="hidden" name="clientId" value={clientId === "quick-register" ? "" : clientId} />
+      <input type="hidden" name="clientId" value={clientId} />
       
-      <div>
-        <label htmlFor="clientSelect" className="block text-sm font-medium text-slate-700 mb-1">Client (Optional)</label>
-        <select 
-          id="clientSelect" 
-          value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
-          className="w-full px-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-        >
-          <option value="">Walk-in / No Client Selected</option>
-          <option value="quick-register">Quick Register New Client</option>
-          {localClients.map(c => (
-            <option key={c.id} value={c.id}>{c.name} {c.cfNo ? `(${c.cfNo})` : ""}</option>
-          ))}
-        </select>
-        <p className="text-xs text-slate-500 mt-1">If selected, this payment will automatically deduct from their ledger balance.</p>
+      <div className="relative" ref={containerRef}>
+        <label htmlFor="clientSearchInput" className="block text-sm font-medium text-slate-700 mb-1">
+          Client (Optional)
+        </label>
+        
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          
+          <input 
+            id="clientSearchInput"
+            type="text"
+            autoComplete="off"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setSelectedClient(null);
+              setIsOpen(true);
+            }}
+            onFocus={() => setIsOpen(true)}
+            placeholder="Type to search client by name or CF number..."
+            className={`w-full pl-9 pr-16 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors ${
+              selectedClient ? "border-amber-500 bg-amber-50/20 font-medium text-slate-800" : "border-slate-200 bg-white"
+            }`}
+          />
+
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+            {selectedClient && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100"
+                title="Clear selection"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsOpen(!isOpen)}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-md"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+            </button>
+          </div>
+        </div>
+
+        {selectedClient ? (
+          <p className="text-xs text-emerald-600 font-medium mt-1">
+            ✓ Payment will automatically credit to {selectedClient.name}&apos;s ledger.
+          </p>
+        ) : (
+          <p className="text-xs text-slate-500 mt-1">
+            If selected, this payment will automatically deduct from their ledger balance.
+          </p>
+        )}
+
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-72 overflow-y-auto overflow-x-hidden divide-y divide-slate-100 animate-in fade-in duration-100">
+            <div className="p-1">
+              <button
+                type="button"
+                onClick={handleSelectWalkin}
+                className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors ${
+                  !selectedClient && !isQuickRegister ? "bg-amber-50 text-amber-900 font-semibold" : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <span className="flex items-center">
+                  <UserX className="w-4 h-4 mr-2 text-slate-400" />
+                  Walk-in / No Client Selected
+                </span>
+                {!selectedClient && !isQuickRegister && <Check className="w-4 h-4 text-amber-600" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenQuickRegister(cleanTerm)}
+                className="w-full text-left px-3 py-2 text-sm rounded-lg flex items-center text-amber-600 hover:bg-amber-50 font-medium transition-colors"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Quick Register New Client {cleanTerm ? `"${cleanTerm}"` : ""}
+              </button>
+            </div>
+
+            <div className="p-1 max-h-56 overflow-y-auto">
+              <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Existing Clients ({filteredClients.length})
+              </div>
+              
+              {filteredClients.length === 0 ? (
+                <div className="px-3 py-4 text-center text-sm text-slate-500">
+                  <p>No clients match &ldquo;{searchTerm}&rdquo;</p>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenQuickRegister(cleanTerm)}
+                    className="mt-2 inline-flex items-center text-xs font-semibold text-amber-600 hover:underline"
+                  >
+                    <UserPlus className="w-3.5 h-3.5 mr-1" /> Quick Register as New Client
+                  </button>
+                </div>
+              ) : (
+                filteredClients.map((c) => {
+                  const isCurrent = selectedClient?.id === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => handleSelectClient(c)}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors ${
+                        isCurrent ? "bg-amber-50 text-amber-900 font-semibold" : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className="truncate pr-2">{c.name}</span>
+                      <div className="flex items-center space-x-2 flex-shrink-0">
+                        {c.cfNo && (
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                            CF: {c.cfNo}
+                          </span>
+                        )}
+                        {isCurrent && <Check className="w-4 h-4 text-amber-600" />}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {clientId === "quick-register" && (
-        <div className="p-4 border border-slate-200 rounded-lg bg-slate-50 space-y-4 mt-4">
-          <h4 className="text-sm font-semibold text-slate-800">Quick Register New Client</h4>
+      {isQuickRegister && (
+        <div className="p-4 border border-slate-200 rounded-lg bg-slate-50 space-y-4 mt-4 animate-in fade-in">
+          <div className="flex justify-between items-center">
+            <h4 className="text-sm font-semibold text-slate-800 flex items-center">
+              <UserPlus className="w-4 h-4 mr-1.5 text-amber-600" />
+              Quick Register New Client
+            </h4>
+            <button
+              type="button"
+              onClick={() => setIsQuickRegister(false)}
+              className="text-slate-400 hover:text-slate-600 text-xs"
+            >
+              Cancel
+            </button>
+          </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Name *</label>
             <input 
@@ -67,7 +256,8 @@ export function ClientOrWalkinSelect({ clients }: { clients: any[] }) {
               value={qrName}
               onChange={e => setQrName(e.target.value)}
               placeholder="Full Name"
-              className="w-full px-3 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+              autoFocus
             />
           </div>
           <div>
@@ -77,7 +267,7 @@ export function ClientOrWalkinSelect({ clients }: { clients: any[] }) {
               value={qrPhone}
               onChange={e => setQrPhone(e.target.value)}
               placeholder="Phone Number"
-              className="w-full px-3 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
             />
           </div>
           <div>
@@ -88,18 +278,34 @@ export function ClientOrWalkinSelect({ clients }: { clients: any[] }) {
               onChange={setQrCategory}
             />
           </div>
-          <button
-            type="button"
-            onClick={handleRegister}
-            disabled={!qrName || isRegistering}
-            className="w-full px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-md hover:bg-amber-700 disabled:opacity-50 transition-colors"
-          >
-            {isRegistering ? "Registering..." : "Register & Select"}
-          </button>
+          <div className="flex space-x-2">
+            <button
+              type="button"
+              onClick={handleRegister}
+              disabled={!qrName || isRegistering}
+              className="flex-1 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-md hover:bg-amber-700 disabled:opacity-50 transition-colors flex items-center justify-center shadow-sm"
+            >
+              {isRegistering ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Registering...
+                </>
+              ) : (
+                "Register & Select"
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsQuickRegister(false)}
+              className="px-4 py-2 bg-slate-200 text-slate-700 text-sm font-medium rounded-md hover:bg-slate-300 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
-      {clientId === "" && (
+      {!selectedClient && !isQuickRegister && (
         <div className="mt-4">
           <label htmlFor="walkinName" className="block text-sm font-medium text-slate-700 mb-1">Walk-in Client Name (Optional)</label>
           <input 
