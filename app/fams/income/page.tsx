@@ -71,6 +71,7 @@ export default async function IncomeRegisterPage() {
                   <th className="px-6 py-3 font-medium">Date</th>
                   <th className="px-6 py-3 font-medium">Client</th>
                   <th className="px-6 py-3 font-medium">Service Type</th>
+                  <th className="px-6 py-3 font-medium">Payment Mode</th>
                   <th className="px-6 py-3 font-medium text-right">Amount (Rs)</th>
                   <th className="px-6 py-3 font-medium text-right">Actions</th>
                 </tr>
@@ -78,7 +79,7 @@ export default async function IncomeRegisterPage() {
               <tbody className="divide-y divide-slate-100">
                 {incomeRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
+                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                       No income records found.
                     </td>
                   </tr>
@@ -100,6 +101,15 @@ export default async function IncomeRegisterPage() {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
                           {record.serviceType}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {record.paymentMode ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            {record.paymentMode}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-emerald-600">
                         + {record.amount.toLocaleString()}

@@ -294,6 +294,7 @@ model IncomeRecord {
   id          String   @id @default(cuid())
   amount      Float
   serviceType String
+  paymentMode String?
   date        DateTime
   clientId    String?
   client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)

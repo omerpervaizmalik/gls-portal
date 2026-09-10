@@ -22,6 +22,7 @@ export default async function NewIncomePage() {
     
     const amountStr = formData.get('amount') as string;
     const serviceType = formData.get('serviceType') as string;
+    const paymentMode = formData.get('paymentMode') as string;
     const dateStr = formData.get('date') as string;
     const clientId = formData.get('clientId') as string;
     const description = formData.get('description') as string;
@@ -58,6 +59,7 @@ export default async function NewIncomePage() {
       data: {
         amount,
         serviceType,
+        paymentMode: paymentMode || null,
         date,
         clientId: clientId || null,
         walkinName: (!clientId && walkinName) ? walkinName : null,
@@ -65,7 +67,7 @@ export default async function NewIncomePage() {
       }
     });
 
-    // 2. If a client is selected, we MUST also record this in their ledger as a CREDIT (Payment)
+    // 3. If a client is selected, we MUST also record this in their ledger as a CREDIT (Payment)
     if (clientId) {
       await prisma.ledgerEntry.create({
         data: {
@@ -73,7 +75,8 @@ export default async function NewIncomePage() {
           type: 'CREDIT',
           amount,
           date,
-          description: description || `Payment for ${serviceType}`
+          description: description || `Payment for ${serviceType}`,
+          paymentMode: paymentMode || null
         }
       });
     }
@@ -137,6 +140,19 @@ export default async function NewIncomePage() {
                 "IPO",
                 "Litigation",
                 "General Consultation"
+              ]} 
+            />
+
+            <CategorySelect 
+              name="paymentMode" 
+              label="Mode of Payment" 
+              otherLabel="Other"
+              options={[
+                "Cash",
+                "Bank Transfer UBL",
+                "Bank Transfer Standard Chartered",
+                "Jazz Cash",
+                "Easy Paisa"
               ]} 
             />
 
