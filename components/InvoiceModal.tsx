@@ -6,6 +6,7 @@ import { X, FileText, ExternalLink } from "lucide-react";
 interface InvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
+  invoiceId?: string;
   clientId?: string;
   clientName?: string;
   description?: string;
@@ -17,6 +18,7 @@ interface InvoiceModalProps {
 export function InvoiceModal({
   isOpen,
   onClose,
+  invoiceId,
   clientId,
   clientName,
   description,
@@ -50,6 +52,7 @@ export function InvoiceModal({
   if (!isOpen) return null;
 
   const queryParams = new URLSearchParams();
+  if (invoiceId) queryParams.set("id", invoiceId);
   if (clientId) queryParams.set("clientId", clientId);
   if (description) queryParams.set("desc", description);
   if (amount !== undefined && amount !== null && amount !== "") queryParams.set("amt", String(amount));
@@ -69,7 +72,9 @@ export function InvoiceModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base leading-tight">Generate Invoice</h3>
+                <h3 className="font-bold text-base leading-tight">
+                  {invoiceId ? "Invoice & Reminder" : "Generate Invoice"}
+                </h3>
                 <span className="text-xs bg-emerald-500/20 text-emerald-300 font-medium px-2 py-0.5 rounded-full border border-emerald-500/30">
                   In-Window Tab
                 </span>

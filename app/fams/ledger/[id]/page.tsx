@@ -13,6 +13,7 @@ export default async function ClientLedgerPage({ params }: { params: { id: strin
     where: { id: params.id },
     include: {
       ledgerEntries: {
+        include: { invoice: true },
         orderBy: { date: 'asc' }
       },
       disbursements: {

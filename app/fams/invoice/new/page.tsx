@@ -27,6 +27,7 @@ function InvoiceGeneratorContent() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [invoiceNo, setInvoiceNo] = useState('');
+  const [currentInvoiceId, setCurrentInvoiceId] = useState<string | null>(invoiceId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [invoiceStatus, setInvoiceStatus] = useState("ISSUED");
@@ -76,8 +77,37 @@ function InvoiceGeneratorContent() {
   ]);
 
   useEffect(() => {
-    // Fetch the next sequential unique invoice number for new invoices
-    if (!invoiceId) {
+    // If an existing invoiceId is already provided, we will load it below.
+    // If not, but a ledgerEntryId is passed, check if that ledger entry already has an invoice!
+    if (!invoiceId && ledgerEntryId) {
+      fetch(`/api/invoices?ledgerEntryId=${ledgerEntryId}`)
+        .then(res => res.json())
+        .then(invoices => {
+          if (Array.isArray(invoices) && invoices.length > 0) {
+            const inv = invoices[0];
+            setCurrentInvoiceId(inv.id);
+            setInvoiceNo(inv.invoiceNo);
+            setInvoiceDate(new Date(inv.date).toISOString().split('T')[0]);
+            setItems(inv.items);
+            setInvoiceStatus(inv.status);
+            setIsSaved(true);
+          } else {
+            // No existing invoice for this entry, fetch next sequential number
+            fetch('/api/invoices/next-no')
+              .then(res => res.json())
+              .then(data => {
+                if (data && data.nextInvoiceNo) {
+                  setInvoiceNo(data.nextInvoiceNo);
+                } else {
+                  setInvoiceNo("INV-1");
+                }
+              })
+              .catch(() => setInvoiceNo("INV-1"));
+          }
+        })
+        .catch(() => {});
+    } else if (!invoiceId) {
+      // Regular new invoice without ledgerEntryId
       fetch('/api/invoices/next-no')
         .then(res => res.json())
         .then(data => {
@@ -96,17 +126,20 @@ function InvoiceGeneratorContent() {
         const clientList = Array.isArray(data) ? data : data.clients || [];
         setClients(clientList);
         
-        if (invoiceId) {
+        const effectiveId = invoiceId || currentInvoiceId;
+        if (effectiveId) {
           // Fetch existing invoice data
-          fetch(`/api/invoices?id=${invoiceId}`)
+          fetch(`/api/invoices?id=${effectiveId}`)
             .then(res => res.json())
             .then(invoices => {
-              const inv = Array.isArray(invoices) ? invoices.find((i: any) => i.id === invoiceId) : null;
+              const inv = Array.isArray(invoices) ? invoices.find((i: any) => i.id === effectiveId) : null;
               if (inv) {
+                setCurrentInvoiceId(inv.id);
                 setInvoiceNo(inv.invoiceNo);
                 setInvoiceDate(new Date(inv.date).toISOString().split('T')[0]);
                 setItems(inv.items);
                 setInvoiceStatus(inv.status);
+                setIsSaved(true);
                 const foundClient = clientList.find((c: any) => c.id === inv.clientId);
                 if (foundClient) {
                   setClientData(foundClient);
@@ -125,7 +158,7 @@ function InvoiceGeneratorContent() {
           }
         }
       }).catch(e => console.error(e));
-  }, [clientId, invoiceId]);
+  }, [clientId, invoiceId, ledgerEntryId]);
 
   const getInvoiceFileName = () => {
     const descSummary = items
@@ -168,7 +201,8 @@ function InvoiceGeneratorContent() {
   const totalAmount = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const saveInvoiceRecord = async (): Promise<{ success: boolean; invoiceNo?: string }> => {
-    if (!clientData && !invoiceId) {
+    const activeId = currentInvoiceId || invoiceId;
+    if (!clientData && !activeId) {
       alert("Please select a client first before saving.");
       return { success: false };
     }
@@ -180,14 +214,14 @@ function InvoiceGeneratorContent() {
 
     setIsSaving(true);
     try {
-      const url = invoiceId ? `/api/invoices/${invoiceId}` : '/api/invoices';
-      const method = invoiceId ? 'PUT' : 'POST';
+      const url = activeId ? `/api/invoices/${activeId}` : '/api/invoices';
+      const method = activeId ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: invoiceId,
+          id: activeId,
           invoiceNo,
           clientId: clientData?.id,
           totalAmount,
@@ -204,6 +238,9 @@ function InvoiceGeneratorContent() {
       }
 
       const savedData = await res.json();
+      if (savedData.id) {
+        setCurrentInvoiceId(savedData.id);
+      }
       const confirmedInvoiceNo = savedData.invoiceNo || invoiceNo;
       setInvoiceNo(confirmedInvoiceNo);
       setIsSaved(true);
@@ -224,15 +261,18 @@ function InvoiceGeneratorContent() {
   };
 
   const handleSaveToLedger = async () => {
+    const activeId = currentInvoiceId || invoiceId;
     const result = await saveInvoiceRecord();
     if (result.success) {
-      alert(invoiceId ? "Invoice updated successfully." : `Invoice ${result.invoiceNo} created and saved to ledger successfully.`);
+      alert(activeId ? "Invoice updated successfully." : `Invoice ${result.invoiceNo} created and saved to ledger successfully.`);
     }
   };
 
   const handleWhatsApp = async () => {
     let currentInvoiceNo = invoiceNo;
-    if (!isSaved) {
+    const activeId = currentInvoiceId || invoiceId;
+
+    if (!isSaved && !activeId) {
       // Auto-save invoice to database first so number is committed and unique
       const result = await saveInvoiceRecord();
       if (!result.success) {
@@ -290,12 +330,13 @@ GLS AI Assistant`;
   };
 
   const handleCancelInvoice = async () => {
-    if (!invoiceId) return;
+    const activeId = currentInvoiceId || invoiceId;
+    if (!activeId) return;
     if (!confirm("Are you sure you want to cancel this invoice? This will remove the debit from the client's ledger.")) return;
 
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/invoices/${invoiceId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/invoices/${activeId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error("Failed to cancel invoice");
       
       setInvoiceStatus("CANCELLED");
@@ -420,7 +461,7 @@ GLS AI Assistant`;
             )}
           </button>
 
-          {isSaved && !invoiceId && (
+          {isSaved && !invoiceId && !currentInvoiceId && (
             <button
               onClick={handleCreateAnother}
               className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold flex items-center transition-all shadow-md shadow-blue-500/20"

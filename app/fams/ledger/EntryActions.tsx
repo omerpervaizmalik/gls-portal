@@ -81,7 +81,7 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
         <button 
           onClick={handleGenerateInvoice}
           className="text-emerald-600 hover:text-emerald-800 transition-colors p-1"
-          title="Generate Invoice for this entry"
+          title={entry.invoice ? `View / Send Invoice (${entry.invoice.invoiceNo})` : "Generate Invoice for this entry"}
         >
           <FileText className="w-4 h-4" />
         </button>
@@ -255,6 +255,7 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
           setIsInvoiceModalOpen(false);
           router.refresh();
         }}
+        invoiceId={entry.invoice?.id}
         clientId={clientId}
         description={entry.description.replace(/^Invoice\s+INV-\d+:\s*/i, '')}
         amount={entry.amount}

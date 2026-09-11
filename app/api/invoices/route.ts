@@ -35,6 +35,28 @@ export async function POST(req: NextRequest) {
 
     let finalLedgerEntryId: string | null = null;
     if (ledgerEntryId) {
+      // If an invoice already exists for this ledgerEntryId, safely update it!
+      const existingInvoiceForLedger = await prisma.invoice.findUnique({
+        where: { ledgerEntryId }
+      });
+      if (existingInvoiceForLedger) {
+        const updatedInvoice = await prisma.invoice.update({
+          where: { id: existingInvoiceForLedger.id },
+          data: {
+            items,
+            totalAmount,
+            date: new Date(date || new Date()),
+            status: 'ISSUED'
+          }
+        });
+
+        revalidatePath("/fams");
+        revalidatePath(`/fams/ledger/${clientId}`);
+        revalidatePath("/fams/invoice");
+
+        return NextResponse.json(updatedInvoice, { status: 200 });
+      }
+
       const existingLedger = await prisma.ledgerEntry.findUnique({ where: { id: ledgerEntryId } });
       if (existingLedger) {
         await prisma.ledgerEntry.update({
@@ -92,11 +114,20 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get('q') || "";
   const id = searchParams.get('id');
+  const ledgerEntryId = searchParams.get('ledgerEntryId');
 
   try {
     if (id) {
       const invoice = await prisma.invoice.findUnique({
         where: { id },
+        include: { client: true }
+      });
+      return NextResponse.json(invoice ? [invoice] : []);
+    }
+
+    if (ledgerEntryId) {
+      const invoice = await prisma.invoice.findUnique({
+        where: { ledgerEntryId },
         include: { client: true }
       });
       return NextResponse.json(invoice ? [invoice] : []);
