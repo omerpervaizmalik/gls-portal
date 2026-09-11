@@ -9,6 +9,8 @@ import { SERVICE_CATEGORY_GROUPS } from '@/app/clients/constants';
 
 import { Suspense } from 'react';
 
+export const dynamic = "force-dynamic";
+
 function InvoiceGeneratorContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -16,6 +18,8 @@ function InvoiceGeneratorContent() {
   const invoiceId = searchParams.get('id'); // Load existing invoice
   const paramDesc = searchParams.get('desc');
   const paramAmt = searchParams.get('amt');
+  const ledgerEntryId = searchParams.get('ledgerEntryId');
+  const isModal = searchParams.get('isModal') === 'true';
   
   const [clientData, setClientData] = useState<any>(null);
   const [clients, setClients] = useState<any[]>([]);
@@ -72,16 +76,13 @@ function InvoiceGeneratorContent() {
   ]);
 
   useEffect(() => {
-    // Fetch the next sequential invoice number for new invoices
+    // Fetch the next sequential unique invoice number for new invoices
     if (!invoiceId) {
-      fetch('/api/invoices')
+      fetch('/api/invoices/next-no')
         .then(res => res.json())
-        .then(invoices => {
-          if (Array.isArray(invoices) && invoices.length > 0) {
-            // invoices are ordered by createdAt desc, so first one is latest
-            const lastInvoiceNo = invoices[0].invoiceNo || "INV-0";
-            const lastNum = parseInt(lastInvoiceNo.replace(/\D/g, '') || "0", 10);
-            setInvoiceNo(`INV-${lastNum + 1}`);
+        .then(data => {
+          if (data && data.nextInvoiceNo) {
+            setInvoiceNo(data.nextInvoiceNo);
           } else {
             setInvoiceNo("INV-1");
           }
@@ -166,15 +167,15 @@ function InvoiceGeneratorContent() {
 
   const totalAmount = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
-  const handleSaveToLedger = async () => {
-    if (!clientData && !invoiceId) { // Allow saving updates to walkin invoices
+  const saveInvoiceRecord = async (): Promise<{ success: boolean; invoiceNo?: string }> => {
+    if (!clientData && !invoiceId) {
       alert("Please select a client first before saving.");
-      return;
+      return { success: false };
     }
 
     if (totalAmount <= 0) {
       alert("Invoice total must be greater than zero.");
-      return;
+      return { success: false };
     }
 
     setIsSaving(true);
@@ -188,28 +189,103 @@ function InvoiceGeneratorContent() {
         body: JSON.stringify({
           id: invoiceId,
           invoiceNo,
-          clientId: clientData.id,
+          clientId: clientData?.id,
           totalAmount,
           date: invoiceDate,
           items: items,
-          status: 'ISSUED'
+          status: 'ISSUED',
+          ledgerEntryId: ledgerEntryId || undefined
         })
       });
 
-      if (!res.ok) throw new Error("Failed to save invoice");
-
-      setIsSaved(true);
-      alert(invoiceId ? "Invoice updated successfully." : "Invoice created and saved to ledger successfully.");
-      
-      if (!invoiceId) {
-        // Redirect to the list or fresh view
-        router.push('/fams/invoice');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save invoice");
       }
-    } catch (err) {
+
+      const savedData = await res.json();
+      const confirmedInvoiceNo = savedData.invoiceNo || invoiceNo;
+      setInvoiceNo(confirmedInvoiceNo);
+      setIsSaved(true);
+
+      // Post message to parent frame if opened in floating modal
+      if (typeof window !== 'undefined' && window.parent) {
+        window.parent.postMessage({ type: 'INVOICE_SAVED', invoiceNo: confirmedInvoiceNo }, '*');
+      }
+
+      return { success: true, invoiceNo: confirmedInvoiceNo };
+    } catch (err: any) {
       console.error(err);
-      alert("Error saving invoice.");
+      alert(err.message || "Error saving invoice.");
+      return { success: false };
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveToLedger = async () => {
+    const result = await saveInvoiceRecord();
+    if (result.success) {
+      alert(invoiceId ? "Invoice updated successfully." : `Invoice ${result.invoiceNo} created and saved to ledger successfully.`);
+    }
+  };
+
+  const handleWhatsApp = async () => {
+    let currentInvoiceNo = invoiceNo;
+    if (!isSaved) {
+      // Auto-save invoice to database first so number is committed and unique
+      const result = await saveInvoiceRecord();
+      if (!result.success) {
+        return; // Stop if save failed
+      }
+      if (result.invoiceNo) {
+        currentInvoiceNo = result.invoiceNo;
+      }
+    }
+
+    const itemList = items.map((i, idx) => `${idx + 1}. ${i.description || 'Service'} - Rs. ${Number(i.amount || 0).toLocaleString()}`).join('\n');
+    const message = `*INVOICE: ${currentInvoiceNo}*
+*From:* Get Legal Solution
+*Billed To:* ${clientData?.name || 'Client'}
+*Date:* ${invoiceDate}
+------------------------
+${itemList}
+------------------------
+*Total Due: Rs. ${totalAmount.toLocaleString()}*
+
+*Payment Details:*
+*UBL ACCOUNT*
+PK27UNIL0109000315815522
+Get Legal Solution
+
+*Jazz Cash*
+03010407809
+Pervaiz Malik
+
+Please pay your bill and send screenshot as soon as possible.
+
+Regards,
+GLS AI Assistant`;
+
+    const cleanNumber = (clientData?.mobileNo || '').replace(/[^0-9]/g, '');
+    const finalNumber = cleanNumber ? (cleanNumber.startsWith('0') ? '92' + cleanNumber.substring(1) : cleanNumber) : '';
+    const url = finalNumber 
+      ? `https://wa.me/${finalNumber}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleCreateAnother = async () => {
+    setIsSaved(false);
+    setItems([{ id: Date.now(), description: 'Legal Consultation Fee', amount: 0 }]);
+    try {
+      const res = await fetch('/api/invoices/next-no');
+      const data = await res.json();
+      if (data?.nextInvoiceNo) {
+        setInvoiceNo(data.nextInvoiceNo);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -242,7 +318,7 @@ function InvoiceGeneratorContent() {
   const isVeryCompact = items.length > 8;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 font-sans">
+    <div className={`min-h-screen bg-slate-50 font-sans ${isModal ? 'py-3 px-2' : 'py-8'}`}>
       
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
@@ -295,22 +371,32 @@ function InvoiceGeneratorContent() {
       `}} />
 
       {/* Non-printable Controls */}
-      <div className="max-w-4xl mx-auto mb-8 print:hidden flex flex-wrap gap-4 items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <Link href={`/fams/ledger/${clientId || ''}`} className="flex items-center text-slate-500 hover:text-slate-700 font-medium">
-          <ArrowLeft className="w-5 h-5 mr-2" /> Back
-        </Link>
-        <div className="flex flex-wrap gap-2">
+      <div className={`max-w-4xl mx-auto mb-6 print:hidden flex flex-wrap gap-3 items-center justify-between bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 ${isModal ? 'mt-1' : ''}`}>
+        {!isModal ? (
+          <Link href={`/fams/ledger/${clientId || ''}`} className="flex items-center text-slate-500 hover:text-slate-700 font-medium text-sm">
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Ledger
+          </Link>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Invoice No:</span>
+            <span className="px-2.5 py-0.5 bg-amber-500/10 text-amber-800 font-mono font-bold text-sm rounded border border-amber-300">
+              {invoiceNo || "Generating..."}
+            </span>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 items-center">
           <button 
             onClick={addItem}
-            className="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg text-sm font-bold flex items-center transition-colors"
+            className="px-3.5 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg text-sm font-bold flex items-center transition-colors"
           >
-            <Plus className="w-4 h-4 mr-2" /> Add Item
+            <Plus className="w-4 h-4 mr-1.5" /> Add Item
           </button>
           
           <button 
             onClick={handleSaveToLedger}
             disabled={isSaving || isSaved}
-            className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center transition-all shadow-lg ${
+            className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center transition-all shadow-md ${
               isSaved 
                 ? "bg-emerald-500 text-white cursor-default" 
                 : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20"
@@ -334,47 +420,28 @@ function InvoiceGeneratorContent() {
             )}
           </button>
 
+          {isSaved && !invoiceId && (
+            <button
+              onClick={handleCreateAnother}
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold flex items-center transition-all shadow-md shadow-blue-500/20"
+              title="Create another new invoice"
+            >
+              <Plus className="w-4 h-4 mr-1.5" /> Another
+            </button>
+          )}
+
           <button 
-            onClick={() => {
-              const itemList = items.map((i, idx) => `${idx + 1}. ${i.description || 'Service'} - Rs. ${Number(i.amount || 0).toLocaleString()}`).join('\n');
-              const message = `*INVOICE: ${invoiceNo}*
-*From:* Get Legal Solution
-*Billed To:* ${clientData?.name || 'Client'}
-*Date:* ${invoiceDate}
-------------------------
-${itemList}
-------------------------
-*Total Due: Rs. ${totalAmount.toLocaleString()}*
-
-*Payment Details:*
-*UBL ACCOUNT*
-PK27UNIL0109000315815522
-Get Legal Solution
-
-*Jazz Cash*
-03010407809
-Pervaiz Malik
-
-Please pay your bill and send screenshot as soon as possible.
-
-Regards,
-GLS AI Assistant`;
-
-              const cleanNumber = (clientData?.mobileNo || '').replace(/[^0-9]/g, '');
-              const finalNumber = cleanNumber ? (cleanNumber.startsWith('0') ? '92' + cleanNumber.substring(1) : cleanNumber) : '';
-              const url = finalNumber 
-                ? `https://wa.me/${finalNumber}?text=${encodeURIComponent(message)}`
-                : `https://wa.me/?text=${encodeURIComponent(message)}`;
-              window.open(url, '_blank');
-            }}
-            className="px-4 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-lg text-sm font-bold flex items-center shadow-lg shadow-emerald-500/20 transition-all"
+            onClick={handleWhatsApp}
+            disabled={isSaving}
+            className="px-4 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-lg text-sm font-bold flex items-center shadow-md shadow-emerald-500/20 transition-all disabled:opacity-50"
+            title={!isSaved ? "Auto-saves invoice first before opening WhatsApp" : "Send invoice via WhatsApp"}
           >
             <svg className="w-4 h-4 mr-2 fill-current" viewBox="0 0 24 24"><path d="M12.031 0C5.385 0 0 5.384 0 12.03c0 2.127.554 4.2 1.602 6.02L.031 24l6.143-1.611a11.967 11.967 0 005.857 1.517v-.001h.001A12.031 12.031 0 0024 12.03C24 5.384 18.614 0 12.031 0zm0 21.962h-.001a10.024 10.024 0 01-5.111-1.396l-.367-.217-3.799.996.997-3.702-.238-.378a10.019 10.019 0 01-1.536-5.32C1.946 6.458 6.425 1.979 12.031 1.979A10.06 10.06 0 0122.052 12.03a10.06 10.06 0 01-10.021 9.932zm5.503-7.508c-.301-.151-1.782-.879-2.059-.979-.277-.101-.479-.151-.68.151-.202.302-.781.979-.957 1.18-.176.202-.353.227-.654.076-1.353-.68-2.316-1.226-3.197-2.736-.228-.393.111-.383.551-1.264.076-.151.038-.277-.038-.428-.076-.151-.68-1.638-.931-2.242-.244-.588-.492-.508-.68-.517-.176-.008-.378-.008-.58-.008s-.529.076-.806.378c-.277.302-1.058 1.033-1.058 2.518s1.083 2.921 1.234 3.123c.151.202 2.126 3.245 5.145 4.545 2.185.94 2.822.846 3.325.756.594-.106 1.782-.73 2.033-1.435.252-.705.252-1.31.176-1.435-.075-.126-.277-.202-.578-.353z"/></svg>
             WhatsApp
           </button>
           <button 
             onClick={handlePrint}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-bold flex items-center shadow-lg shadow-slate-500/20 transition-all"
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-bold flex items-center shadow-md shadow-slate-500/20 transition-all"
           >
             <Printer className="w-4 h-4 mr-2" /> Print / PDF
           </button>

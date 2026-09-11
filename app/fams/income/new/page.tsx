@@ -6,6 +6,9 @@ import { ArrowLeft, Save } from "lucide-react";
 import { revalidatePath } from "next/cache";
 import CategorySelect from "@/components/CategorySelect";
 import { ClientOrWalkinSelect } from "./ClientOrWalkinSelect";
+import { getNextInvoiceNumber } from "@/lib/invoices";
+
+export const dynamic = "force-dynamic";
 
 export default async function NewIncomePage() {
   const clients = await prisma.$queryRaw`
@@ -35,16 +38,12 @@ export default async function NewIncomePage() {
     const amount = parseFloat(amountStr);
     const date = new Date(dateStr);
 
-    // 1. Generate an Invoice first
-    const lastInvoice = await prisma.invoice.findFirst({
-      orderBy: { createdAt: 'desc' }
-    });
-    const lastInvoiceNo = lastInvoice?.invoiceNo || "INV-000000";
-    const nextInvoiceNumber = (parseInt(lastInvoiceNo.split("-")[1] || "0") + 1).toString().padStart(6, '0');
+    // 1. Generate an Invoice first using unified number generator
+    const invoiceNo = await getNextInvoiceNumber();
     
     const invoice = await prisma.invoice.create({
       data: {
-        invoiceNo: `INV-${nextInvoiceNumber}`,
+        invoiceNo,
         clientId: clientId || null,
         walkinName: (!clientId && walkinName) ? walkinName : null,
         date,

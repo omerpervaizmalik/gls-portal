@@ -3,11 +3,20 @@
 import React, { useState } from "react";
 import { Plus, Download, Printer, FileText, X, Loader2, FolderOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { InvoiceModal } from "@/components/InvoiceModal";
 
 export function LedgerControls({ clientId, clientName, cfNo }: { clientId: string, clientName: string, cfNo?: string }) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // In-window floating invoice modal state
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [invoiceModalParams, setInvoiceModalParams] = useState<{
+    description?: string;
+    amount?: string | number;
+    ledgerEntryId?: string;
+  }>({});
   
   const [formData, setFormData] = useState({
     type: 'DEBIT',
@@ -46,8 +55,9 @@ export function LedgerControls({ clientId, clientName, cfNo }: { clientId: strin
   };
 
   const handleGenerateInvoice = () => {
-    // Open a new tab for the invoice generation
-    window.open(`/fams/invoice/new?clientId=${clientId}`, '_blank');
+    // Open in-window floating modal instead of new browser tab
+    setInvoiceModalParams({});
+    setIsInvoiceModalOpen(true);
   };
 
   const handleAddEntry = async (e: React.FormEvent | React.MouseEvent, generateInvoice: boolean = false) => {
@@ -62,13 +72,20 @@ export function LedgerControls({ clientId, clientName, cfNo }: { clientId: strin
       });
       
       if (res.ok) {
+        const createdEntry = await res.json().catch(() => null);
         setIsModalOpen(false);
         const { description, amount } = formData;
         setFormData({ type: 'DEBIT', amount: '', date: new Date().toISOString().split('T')[0], description: '', paymentMode: '' });
         router.refresh();
         
         if (generateInvoice) {
-          window.open(`/fams/invoice/new?clientId=${clientId}&desc=${encodeURIComponent(description)}&amt=${amount}`, '_blank');
+          // Open in-window floating modal with new entry details and linked ledgerEntryId
+          setInvoiceModalParams({
+            description,
+            amount,
+            ledgerEntryId: createdEntry?.id
+          });
+          setIsInvoiceModalOpen(true);
         }
       } else {
         alert("Failed to add entry");
@@ -267,6 +284,23 @@ export function LedgerControls({ clientId, clientName, cfNo }: { clientId: strin
           </div>
         </div>
       )}
+
+      {/* In-Window Floating Invoice Modal */}
+      <InvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => {
+          setIsInvoiceModalOpen(false);
+          router.refresh();
+        }}
+        clientId={clientId}
+        clientName={clientName}
+        description={invoiceModalParams.description}
+        amount={invoiceModalParams.amount}
+        ledgerEntryId={invoiceModalParams.ledgerEntryId}
+        onInvoiceSaved={() => {
+          router.refresh();
+        }}
+      />
     </>
   );
 }

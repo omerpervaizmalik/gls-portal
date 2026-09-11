@@ -3,10 +3,12 @@
 import React, { useState } from "react";
 import { FileText, Edit2, Trash2, X, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { InvoiceModal } from "@/components/InvoiceModal";
 
 export function EntryActions({ entry, clientId }: { entry: any, clientId: string }) {
   const router = useRouter();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
@@ -20,9 +22,8 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
   });
 
   const handleGenerateInvoice = () => {
-    // Strip any existing "Invoice INV-XXXX: " prefix from the description
-    const cleanDesc = entry.description.replace(/^Invoice\s+INV-\d+:\s*/i, '');
-    window.open(`/fams/invoice/new?clientId=${clientId}&desc=${encodeURIComponent(cleanDesc)}&amt=${entry.amount}`, '_blank');
+    // Open in-window floating invoice modal instead of new tab
+    setIsInvoiceModalOpen(true);
   };
 
   const handleUpdateEntry = async (e: React.FormEvent) => {
@@ -246,6 +247,22 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
           </div>
         </div>
       )}
+
+      {/* In-Window Floating Invoice Modal */}
+      <InvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => {
+          setIsInvoiceModalOpen(false);
+          router.refresh();
+        }}
+        clientId={clientId}
+        description={entry.description.replace(/^Invoice\s+INV-\d+:\s*/i, '')}
+        amount={entry.amount}
+        ledgerEntryId={entry.id}
+        onInvoiceSaved={() => {
+          router.refresh();
+        }}
+      />
     </>
   );
 }
