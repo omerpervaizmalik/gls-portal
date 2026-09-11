@@ -44,7 +44,13 @@ export default async function ClientLedgerPage({ params }: { params: { id: strin
           </div>
         </div>
         <div className="overflow-x-auto md:overflow-x-visible scrollbar-hide">
-          <LedgerControls clientId={client.id} clientName={client.name} cfNo={client.cfNo} />
+          <LedgerControls 
+            clientId={client.id} 
+            clientName={client.name} 
+            cfNo={client.cfNo} 
+            mobileNo={client.mobileNo}
+            currentBalance={runningBalance}
+          />
         </div>
       </div>
 

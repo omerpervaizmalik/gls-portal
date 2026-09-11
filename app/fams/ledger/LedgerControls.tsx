@@ -1,11 +1,23 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Download, Printer, FileText, X, Loader2, FolderOpen } from "lucide-react";
+import { Plus, Download, Printer, FileText, X, Loader2, FolderOpen, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { InvoiceModal } from "@/components/InvoiceModal";
 
-export function LedgerControls({ clientId, clientName, cfNo }: { clientId: string, clientName: string, cfNo?: string }) {
+export function LedgerControls({ 
+  clientId, 
+  clientName, 
+  cfNo,
+  mobileNo,
+  currentBalance = 0
+}: { 
+  clientId: string; 
+  clientName: string; 
+  cfNo?: string;
+  mobileNo?: string | null;
+  currentBalance?: number;
+}) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,6 +42,50 @@ export function LedgerControls({ clientId, clientName, cfNo }: { clientId: strin
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleWhatsAppReminder = () => {
+    const dueAmount = Math.abs(currentBalance).toLocaleString();
+    const message = `*PAYMENT REMINDER - ACCOUNT STATEMENT*
+*Client:* ${clientName}${cfNo ? ` (CF No: ${cfNo})` : ""}
+*From:* Get Legal Solution
+
+Dear Client,
+This is a gentle reminder regarding your outstanding balance in your account ledger.
+
+*Outstanding Balance Due: Rs. ${dueAmount}*
+
+*Payment Details:*
+*UBL ACCOUNT*
+PK27UNIL0109000315815522
+Get Legal Solution
+
+*Jazz Cash*
+03010407809
+Pervaiz Malik
+
+Please clear your pending balance at your earliest convenience and share the payment receipt/screenshot.
+
+Thank you for choosing Get Legal Solution.
+Regards,
+GLS Management`;
+
+    const cleanNumber = (mobileNo || "").replace(/[^0-9]/g, "");
+    const finalNumber = cleanNumber
+      ? cleanNumber.startsWith("0")
+        ? "92" + cleanNumber.substring(1)
+        : cleanNumber
+      : "";
+
+    if (!finalNumber) {
+      const proceed = confirm(`Client ${clientName} does not have a valid mobile number on file. Do you still want to open WhatsApp?`);
+      if (!proceed) return;
+    }
+
+    const url = finalNumber
+      ? `https://wa.me/${finalNumber}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
   };
 
   const handleViewFolder = async () => {
@@ -99,32 +155,39 @@ export function LedgerControls({ clientId, clientName, cfNo }: { clientId: strin
 
   return (
     <>
-      <div className="flex gap-2 print:hidden">
+      <div className="flex flex-wrap gap-2 print:hidden">
+        <button 
+          onClick={handleWhatsAppReminder}
+          title="Send WhatsApp Payment Reminder"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 md:px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center shadow-sm shadow-emerald-500/20"
+        >
+          <Send className="w-4 h-4 mr-1.5" /> WhatsApp Reminder
+        </button>
         <button 
           onClick={handleViewFolder}
           disabled={isFindingFolder}
-          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center shadow-sm print:hidden disabled:opacity-50"
+          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 md:px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center shadow-sm print:hidden disabled:opacity-50"
         >
-          {isFindingFolder ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FolderOpen className="w-4 h-4 mr-2" />}
+          {isFindingFolder ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <FolderOpen className="w-4 h-4 mr-1.5" />}
           View Folder
         </button>
         <button 
           onClick={handlePrint}
-          className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center shadow-sm"
+          className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-3 md:px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center shadow-sm"
         >
-          <Printer className="w-4 h-4 mr-2" /> Print
+          <Printer className="w-4 h-4 mr-1.5" /> Print
         </button>
         <button 
           onClick={handleGenerateInvoice}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center shadow-md shadow-emerald-500/20"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 md:px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center shadow-sm shadow-indigo-500/20"
         >
-          <FileText className="w-4 h-4 mr-2" /> Generate Invoice
+          <FileText className="w-4 h-4 mr-1.5" /> Generate Invoice
         </button>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center shadow-md shadow-amber-500/20"
+          className="bg-amber-500 hover:bg-amber-600 text-white px-3 md:px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center shadow-sm shadow-amber-500/20"
         >
-          <Plus className="w-4 h-4 mr-2" /> Add Entry
+          <Plus className="w-4 h-4 mr-1.5" /> Add Entry
         </button>
       </div>
 
