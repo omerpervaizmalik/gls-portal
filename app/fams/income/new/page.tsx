@@ -20,6 +20,29 @@ export default async function NewIncomePage() {
     END ASC, "cfNo" ASC
   ` as any[];
 
+  // Fetch ledger entries to calculate outstanding balance for each client
+  const ledgerEntries = await prisma.ledgerEntry.findMany({
+    select: {
+      clientId: true,
+      type: true,
+      amount: true
+    }
+  });
+
+  const balanceMap = new Map<string, number>();
+  for (const entry of ledgerEntries) {
+    const current = balanceMap.get(entry.clientId) || 0;
+    balanceMap.set(
+      entry.clientId,
+      entry.type === 'DEBIT' ? current + entry.amount : current - entry.amount
+    );
+  }
+
+  const clientsWithBalance = clients.map(c => ({
+    ...c,
+    balance: balanceMap.get(c.id) || 0
+  }));
+
   async function createIncome(formData: FormData) {
     "use server";
     
@@ -112,7 +135,7 @@ export default async function NewIncomePage() {
               />
             </div>
             
-            <ClientOrWalkinSelect clients={clients} />
+            <ClientOrWalkinSelect clients={clientsWithBalance} />
 
             <div>
               <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-1">Amount Received (Rs) *</label>
