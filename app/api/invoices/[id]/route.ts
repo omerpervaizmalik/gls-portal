@@ -11,7 +11,7 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const { id, items, totalAmount, date, status } = await req.json();
+    const { id, items, totalAmount, date, status, discount } = await req.json();
 
     const existingInvoice = await prisma.invoice.findUnique({
       where: { id },
@@ -22,12 +22,16 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
+    const parsedTotal = totalAmount !== undefined ? parseFloat(totalAmount) : existingInvoice.totalAmount;
+    const parsedDiscount = discount !== undefined ? parseFloat(discount) : (existingInvoice.discount || 0);
+
     // Update Invoice
     const updatedInvoice = await prisma.invoice.update({
       where: { id },
       data: {
         items: items || existingInvoice.items,
-        totalAmount: totalAmount || existingInvoice.totalAmount,
+        totalAmount: parsedTotal,
+        discount: parsedDiscount,
         date: date ? new Date(date) : existingInvoice.date,
         status: status || existingInvoice.status
       }
@@ -41,7 +45,7 @@ export async function PUT(req: NextRequest) {
       await prisma.ledgerEntry.update({
         where: { id: existingInvoice.ledgerEntryId },
         data: {
-          amount: totalAmount || existingInvoice.totalAmount,
+          amount: parsedTotal,
           date: date ? new Date(date) : existingInvoice.date,
           description: ledgerDescription || existingInvoice.ledgerEntry?.description
         }

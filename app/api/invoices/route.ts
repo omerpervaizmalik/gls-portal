@@ -12,11 +12,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { invoiceNo, clientId, date, items, totalAmount, ledgerEntryId } = await req.json();
+    const { invoiceNo, clientId, date, items, totalAmount, discount, ledgerEntryId } = await req.json();
 
     if (!clientId || !items || !totalAmount) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
+
+    const parsedTotal = parseFloat(totalAmount);
+    const parsedDiscount = discount !== undefined ? parseFloat(discount) : 0;
 
     // Determine unique invoice number
     let finalInvoiceNo = invoiceNo;
@@ -44,9 +47,20 @@ export async function POST(req: NextRequest) {
           where: { id: existingInvoiceForLedger.id },
           data: {
             items,
-            totalAmount,
+            totalAmount: parsedTotal,
+            discount: parsedDiscount,
             date: new Date(date || new Date()),
             status: 'ISSUED'
+          }
+        });
+
+        // Also ensure ledger entry amount and description match
+        await prisma.ledgerEntry.update({
+          where: { id: ledgerEntryId },
+          data: {
+            amount: parsedTotal,
+            date: new Date(date || new Date()),
+            description: ledgerDescription
           }
         });
 
@@ -62,6 +76,7 @@ export async function POST(req: NextRequest) {
         await prisma.ledgerEntry.update({
           where: { id: ledgerEntryId },
           data: {
+            amount: parsedTotal,
             description: ledgerDescription
           }
         });
@@ -74,7 +89,7 @@ export async function POST(req: NextRequest) {
         data: {
           clientId,
           type: 'DEBIT',
-          amount: totalAmount,
+          amount: parsedTotal,
           date: new Date(date || new Date()),
           description: ledgerDescription
         }
@@ -89,7 +104,8 @@ export async function POST(req: NextRequest) {
         clientId,
         date: new Date(date || new Date()),
         items, // JSON array
-        totalAmount,
+        totalAmount: parsedTotal,
+        discount: parsedDiscount,
         ledgerEntryId: finalLedgerEntryId,
         status: 'ISSUED'
       }

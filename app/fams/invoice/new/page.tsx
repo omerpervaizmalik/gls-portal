@@ -18,6 +18,7 @@ function InvoiceGeneratorContent() {
   const invoiceId = searchParams.get('id'); // Load existing invoice
   const paramDesc = searchParams.get('desc');
   const paramAmt = searchParams.get('amt');
+  const paramDiscount = searchParams.get('discount');
   const ledgerEntryId = searchParams.get('ledgerEntryId');
   const isModal = searchParams.get('isModal') === 'true';
   
@@ -27,6 +28,7 @@ function InvoiceGeneratorContent() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [invoiceNo, setInvoiceNo] = useState('');
+  const [discount, setDiscount] = useState<number>(paramDiscount ? Number(paramDiscount) : 0);
   const [currentInvoiceId, setCurrentInvoiceId] = useState<string | null>(invoiceId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -89,6 +91,9 @@ function InvoiceGeneratorContent() {
             setInvoiceNo(inv.invoiceNo);
             setInvoiceDate(new Date(inv.date).toISOString().split('T')[0]);
             setItems(inv.items);
+            if (inv.discount !== undefined && inv.discount !== null) {
+              setDiscount(Number(inv.discount) || 0);
+            }
             setInvoiceStatus(inv.status);
             setIsSaved(true);
           } else {
@@ -138,6 +143,9 @@ function InvoiceGeneratorContent() {
                 setInvoiceNo(inv.invoiceNo);
                 setInvoiceDate(new Date(inv.date).toISOString().split('T')[0]);
                 setItems(inv.items);
+                if (inv.discount !== undefined && inv.discount !== null) {
+                  setDiscount(Number(inv.discount) || 0);
+                }
                 setInvoiceStatus(inv.status);
                 setIsSaved(true);
                 const foundClient = clientList.find((c: any) => c.id === inv.clientId);
@@ -198,7 +206,8 @@ function InvoiceGeneratorContent() {
     }
   };
 
-  const totalAmount = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const subtotal = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const totalAmount = Math.max(0, subtotal - Number(discount || 0));
 
   const saveInvoiceRecord = async (): Promise<{ success: boolean; invoiceNo?: string }> => {
     const activeId = currentInvoiceId || invoiceId;
@@ -207,8 +216,8 @@ function InvoiceGeneratorContent() {
       return { success: false };
     }
 
-    if (totalAmount <= 0) {
-      alert("Invoice total must be greater than zero.");
+    if (totalAmount < 0) {
+      alert("Invoice total cannot be negative.");
       return { success: false };
     }
 
@@ -225,6 +234,7 @@ function InvoiceGeneratorContent() {
           invoiceNo,
           clientId: clientData?.id,
           totalAmount,
+          discount: Number(discount) || 0,
           date: invoiceDate,
           items: items,
           status: 'ISSUED',
@@ -284,6 +294,7 @@ function InvoiceGeneratorContent() {
     }
 
     const itemList = items.map((i, idx) => `${idx + 1}. ${i.description || 'Service'} - Rs. ${Number(i.amount || 0).toLocaleString()}`).join('\n');
+    const discountText = discount > 0 ? `• *Discount:* - Rs. ${Number(discount).toLocaleString()}\n` : '';
     const message = `*INVOICE: ${currentInvoiceNo}*
 *From:* Get Legal Solution
 *Billed To:* ${clientData?.name || 'Client'}
@@ -291,7 +302,8 @@ function InvoiceGeneratorContent() {
 ------------------------
 ${itemList}
 ------------------------
-*Total Due: Rs. ${totalAmount.toLocaleString()}*
+• *Subtotal:* Rs. ${subtotal.toLocaleString()}
+${discountText}*Total Due: Rs. ${totalAmount.toLocaleString()}*
 
 *Payment Details:*
 *UBL ACCOUNT*
@@ -305,7 +317,7 @@ Pervaiz Malik
 Please pay your bill and send screenshot as soon as possible.
 
 Regards,
-GLS AI Assistant`;
+GLS Management`;
 
     const cleanNumber = (clientData?.mobileNo || '').replace(/[^0-9]/g, '');
     const finalNumber = cleanNumber ? (cleanNumber.startsWith('0') ? '92' + cleanNumber.substring(1) : cleanNumber) : '';
@@ -317,6 +329,7 @@ GLS AI Assistant`;
 
   const handleCreateAnother = async () => {
     setIsSaved(false);
+    setDiscount(0);
     setItems([{ id: Date.now(), description: 'Legal Consultation Fee', amount: 0 }]);
     try {
       const res = await fetch('/api/invoices/next-no');
@@ -713,14 +726,33 @@ GLS AI Assistant`;
 
         {/* Totals Section */}
         <div className={`flex justify-end text-sm ${isVeryCompact ? 'mb-2' : isCompact ? 'mb-4' : 'mb-6'}`}>
-          <div className={`w-1/2 bg-slate-50 rounded-xl border border-slate-200 ${isVeryCompact ? 'p-2' : isCompact ? 'p-3' : 'p-4'}`}>
+          <div className={`w-full sm:w-1/2 bg-slate-50 rounded-xl border border-slate-200 ${isVeryCompact ? 'p-2' : isCompact ? 'p-3' : 'p-4'}`}>
             <div className={`flex justify-between items-center text-slate-600 ${isVeryCompact ? 'mb-1 text-[10px]' : 'mb-2'}`}>
-              <span>Subtotal:</span>
-              <span>Rs. {totalAmount.toLocaleString()}</span>
+              <span className="font-medium">Subtotal:</span>
+              <span className="font-bold">Rs. {subtotal.toLocaleString()}</span>
             </div>
-            <div className={`flex justify-between items-center text-slate-600 border-b border-slate-200 ${isVeryCompact ? 'mb-1 pb-1 text-[10px]' : 'mb-2 pb-2'}`}>
-              <span>Tax / Discount:</span>
-              <span>-</span>
+            <div className={`flex justify-between items-center border-b border-slate-200 ${isVeryCompact ? 'mb-1 pb-1 text-[10px]' : 'mb-2 pb-2'}`}>
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium text-slate-600">Discount:</span>
+                <span className="print:hidden text-[9px] uppercase font-bold text-emerald-600 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
+                  Optional
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-slate-500 font-medium">Rs.</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={discount === 0 ? '' : discount}
+                  onChange={e => setDiscount(Math.max(0, Number(e.target.value) || 0))}
+                  placeholder="0"
+                  className={`w-24 sm:w-28 text-right outline-none font-bold text-rose-600 bg-white border border-slate-200 rounded px-2 py-0.5 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 print:hidden ${isVeryCompact ? 'text-[10px]' : 'text-xs'}`}
+                />
+                <span className="hidden print:inline font-bold text-slate-800">
+                  {discount > 0 ? `- ${discount.toLocaleString()}` : "0"}
+                </span>
+              </div>
             </div>
             <div className={`flex justify-between items-center font-black text-slate-900 ${isVeryCompact ? 'mt-1 text-sm' : 'mt-2 text-lg'}`}>
               <span>Total Due:</span>

@@ -255,6 +255,7 @@ model Invoice {
   date        DateTime
   items       Json // Array of { description: string, amount: number }
   totalAmount Float
+  discount    Float?   @default(0)
   status      String   @default("ISSUED") // ISSUED, CANCELLED
 
   ledgerEntryId String?      @unique

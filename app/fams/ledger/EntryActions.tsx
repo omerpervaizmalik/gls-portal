@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
-import { FileText, Edit2, Trash2, X, Loader2 } from "lucide-react";
+import { FileText, Edit2, Trash2, X, Loader2, Tag, Percent } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { InvoiceModal } from "@/components/InvoiceModal";
 
@@ -11,15 +11,32 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const hasInvoice = !!entry.invoice || /^Invoice\s+(?:INV-[\w-]+|[\w-]+):/i.test(entry.description || "");
+
+  // Extract invoice prefix if present, e.g. "Invoice INV-9271: "
+  const invoicePrefixMatch = (entry.description || "").match(/^(Invoice\s+(?:INV-[\w-]+|[\w-]+):\s*)(.*)$/i);
+  const invoicePrefix = invoicePrefixMatch 
+    ? invoicePrefixMatch[1] 
+    : (entry.invoice?.invoiceNo ? `Invoice ${entry.invoice.invoiceNo}: ` : "");
   
-  const [formData, setFormData] = useState({
-    id: entry.id,
-    type: entry.type,
-    amount: entry.amount,
-    date: new Date(entry.date).toISOString().split('T')[0],
-    description: entry.description,
-    paymentMode: entry.paymentMode || ''
-  });
+  const initialServiceDescription = invoicePrefixMatch 
+    ? invoicePrefixMatch[2] 
+    : (hasInvoice ? entry.description.replace(/^Invoice\s+[\w-]+:\s*/i, "") : (entry.description || ""));
+
+  const initialDiscount = entry.invoice?.discount || 0;
+  const initialGrossAmount = (entry.type === "DEBIT" && hasInvoice)
+    ? (entry.amount + initialDiscount)
+    : entry.amount;
+
+  const [serviceDescription, setServiceDescription] = useState(initialServiceDescription);
+  const [grossAmount, setGrossAmount] = useState<number | string>(initialGrossAmount);
+  const [discount, setDiscount] = useState<number | string>(initialDiscount);
+  const [entryType, setEntryType] = useState(entry.type);
+  const [paymentMode, setPaymentMode] = useState(entry.paymentMode || "");
+  const [entryDate, setEntryDate] = useState(
+    entry.date ? new Date(entry.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]
+  );
 
   const handleGenerateInvoice = () => {
     // Open in-window floating invoice modal instead of new tab
@@ -29,19 +46,42 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
   const handleUpdateEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
+    const isDebitInvoice = entryType === "DEBIT" && hasInvoice;
+    const parsedGross = parseFloat(String(grossAmount)) || 0;
+    const parsedDiscount = isDebitInvoice ? (parseFloat(String(discount)) || 0) : 0;
+    const netAmount = isDebitInvoice ? Math.max(0, parsedGross - parsedDiscount) : parsedGross;
+
+    const trimmedDesc = serviceDescription.trim();
+    const finalDescription = isDebitInvoice && invoicePrefix 
+      ? `${invoicePrefix}${trimmedDesc}`
+      : trimmedDesc;
+
+    const payload = {
+      id: entry.id,
+      type: entryType,
+      amount: netAmount,
+      date: entryDate,
+      description: finalDescription || entry.description,
+      serviceDescription: trimmedDesc,
+      discount: parsedDiscount,
+      paymentMode: entryType === "CREDIT" ? paymentMode : "",
+      clientId
+    };
+
     try {
-      const res = await fetch('/api/ledgers', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+      const res = await fetch("/api/ledgers", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
-      
+
       if (res.ok) {
         setIsEditModalOpen(false);
         router.refresh();
       } else {
-        alert("Failed to update entry");
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Failed to update entry");
       }
     } catch (err) {
       alert("An error occurred");
@@ -54,15 +94,15 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
     if (!window.confirm(`Are you sure you want to delete this ${entry.type} entry of Rs. ${entry.amount}? This action cannot be undone.`)) {
       return;
     }
-    
+
     setIsDeleting(true);
     try {
-      const res = await fetch('/api/ledgers', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: entry.id })
+      const res = await fetch("/api/ledgers", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: entry.id, clientId })
       });
-      
+
       if (res.ok) {
         router.refresh();
       } else {
@@ -74,6 +114,8 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
       setIsDeleting(false);
     }
   };
+
+  const currentNetAmount = Math.max(0, (Number(grossAmount) || 0) - (Number(discount) || 0));
 
   return (
     <>
@@ -88,7 +130,7 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
         <button 
           onClick={() => setIsEditModalOpen(true)}
           className="text-amber-500 hover:text-amber-700 transition-colors p-1"
-          title="Modify entry"
+          title={hasInvoice ? "Modify Invoice & Ledger Entry" : "Modify Entry"}
         >
           <Edit2 className="w-4 h-4" />
         </button>
@@ -103,40 +145,79 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
       </div>
 
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="text-lg font-bold text-slate-900">Modify Ledger Entry</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-bold text-slate-900">
+                  {hasInvoice ? "Modify Invoice & Ledger Entry" : "Modify Ledger Entry"}
+                </h3>
+                {entry.invoice?.invoiceNo && (
+                  <span className="text-xs font-mono font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                    {entry.invoice.invoiceNo}
+                  </span>
+                )}
+              </div>
               <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
+
+            {/* Quick full invoice editor shortcut if entry is an invoice */}
+            {hasInvoice && (
+              <div className="px-6 pt-4">
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                    <span className="text-xs font-medium text-indigo-900">
+                      Need to edit multiple items or print?
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditModalOpen(false);
+                      setIsInvoiceModalOpen(true);
+                    }}
+                    className="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-white border border-indigo-200 hover:border-indigo-300 px-3 py-1 rounded-lg transition-colors shadow-sm flex items-center gap-1"
+                  >
+                    Open Full Invoice Editor
+                  </button>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleUpdateEntry} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Transaction Type</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Transaction Type
+                </label>
                 <select 
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all appearance-none bg-white"
-                  value={formData.type}
-                  onChange={e => setFormData({ ...formData, type: e.target.value, paymentMode: e.target.value === 'DEBIT' ? '' : formData.paymentMode })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all appearance-none bg-white font-medium"
+                  value={entryType}
+                  onChange={e => setEntryType(e.target.value)}
                 >
                   <option value="DEBIT">Invoice / Charge (Client Owes)</option>
                   <option value="CREDIT">Payment Received (Client Paid)</option>
                 </select>
               </div>
 
-              {formData.type === 'CREDIT' && (
+              {entryType === "CREDIT" && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Mode of Payment</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Mode of Payment
+                  </label>
                   <select 
                     required
                     className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all appearance-none bg-emerald-50 text-emerald-800 font-medium"
-                    value={formData.paymentMode}
-                    onChange={e => setFormData({ ...formData, paymentMode: e.target.value })}
+                    value={paymentMode}
+                    onChange={e => setPaymentMode(e.target.value)}
                   >
                     <option value="">-- Select Payment Mode --</option>
                     <option value="Cash">Cash</option>
                     <option value="Bank Account">Bank Account</option>
+                    <option value="Bank Transfer UBL">Bank Transfer UBL</option>
+                    <option value="Bank Transfer Standard Chartered">Bank Transfer Standard Chartered</option>
                     <option value="Jazz Cash">Jazz Cash</option>
                     <option value="Easy Paisa">Easy Paisa</option>
                     <option value="Others">Others</option>
@@ -144,103 +225,163 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
                 </div>
               )}
 
+              {/* Service Description Input with clean template dropdown */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Amount (Rs.)</label>
-                <input 
-                  required
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                  value={formData.amount}
-                  onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Date</label>
-                <input 
-                  required
-                  type="date"
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                  value={formData.date}
-                  onChange={e => setFormData({ ...formData, date: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Description</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    {hasInvoice ? "Description of Service" : "Description"}
+                  </label>
+                  {invoicePrefix && (
+                    <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
+                      Prefix: {invoicePrefix.trim()}
+                    </span>
+                  )}
+                </div>
                 <input 
                   required
                   type="text"
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 mb-2"
-                  value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="e.g. Income Tax Return Filing"
+                  className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 mb-2 font-medium text-slate-800 bg-white"
+                  value={serviceDescription}
+                  onChange={e => setServiceDescription(e.target.value)}
                 />
                 <select 
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all appearance-none"
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-xs outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all appearance-none"
                   onChange={e => {
                     if (e.target.value) {
-                      setFormData({ ...formData, description: e.target.value });
-                      e.target.value = ""; // reset after selection
+                      setServiceDescription(e.target.value);
+                      e.target.value = "";
                     }
                   }}
                   defaultValue=""
                 >
-                  <option value="">-- Or select a standard service --</option>
-                  <optgroup label="General & Corporate Legal Fees">
-                    <option value="Retainer Fee">Retainer Fee</option>
-                    <option value="Lump Sum / Flat Fee">Lump Sum / Flat Fee</option>
-                    <option value="Hourly Billing Rate">Hourly Billing Rate</option>
-                    <option value="Contingency Fee">Contingency Fee</option>
-                    <option value="Success Fee">Success Fee</option>
-                    <option value="Legal Research & Precedent Analysis Fee">Legal Research & Precedent Analysis Fee</option>
-                    <option value="Drafting & Vetting Fee (Contracts, Deeds, Bylaws)">Drafting & Vetting Fee (Contracts, Deeds, Bylaws)</option>
-                    <option value="Legal Opinion Fee">Legal Opinion Fee</option>
-                    <option value="Due Diligence Audit Fee">Due Diligence Audit Fee</option>
-                    <option value="Court Appearance & Representation Fee">Court Appearance & Representation Fee</option>
-                    <option value="Corporate Secretarial Service Fee">Corporate Secretarial Service Fee</option>
-                  </optgroup>
-                  <optgroup label="Company Registration Matters (SECP)">
-                    <option value="User Registration Fee (eZfile Portal access)">User Registration Fee (eZfile Portal access)</option>
-                    <option value="Name Reservation Fee">Name Reservation Fee</option>
-                    <option value="Company Incorporation/Registration Fee (Based on Authorized Capital)">Company Incorporation/Registration Fee (Based on Authorized Capital)</option>
-                    <option value="Form A / Form 29 Filing Fee (Annual Returns/Director Changes)">Form A / Form 29 Filing Fee (Annual Returns/Director Changes)</option>
-                    <option value="Memorandum & Articles of Association Drafting Fee">Memorandum & Articles of Association Drafting Fee</option>
-                    <option value="Certified True Copy (CTC) Issuance Fee">Certified True Copy (CTC) Issuance Fee</option>
-                    <option value="Mortgage or Charge Registration Fee">Mortgage or Charge Registration Fee</option>
-                    <option value="Status Conversion Fee (e.g., Private to Public or SMC)">Status Conversion Fee (e.g., Private to Public or SMC)</option>
-                    <option value="Issuance of Further Share Capital Fee">Issuance of Further Share Capital Fee</option>
-                  </optgroup>
+                  <option value="">-- Or select a standard service template --</option>
                   <optgroup label="Taxation Services (FBR)">
-                    <option value="NTN Registration Fee (Individual, AOP, or Company)">NTN Registration Fee (Individual, AOP, or Company)</option>
-                    <option value="Income Tax Return Filing Fee (Annual)">Income Tax Return Filing Fee (Annual)</option>
-                    <option value="Sales Tax Registration Fee (GST/PST)">Sales Tax Registration Fee (GST/PST)</option>
-                    <option value="Monthly Sales Tax Filing Fee (Federal or Provincial)">Monthly Sales Tax Filing Fee (Federal or Provincial)</option>
-                    <option value="Withholding Tax Statement Filing Fee">Withholding Tax Statement Filing Fee</option>
-                    <option value="Tax Audit Representation Fee">Tax Audit Representation Fee</option>
-                    <option value="Tax Appeal & Litigation Fee (Commissioner or Tribunal)">Tax Appeal & Litigation Fee (Commissioner or Tribunal)</option>
-                    <option value="Exemption Certificate Application Fee">Exemption Certificate Application Fee</option>
+                    <option value="Income Tax Return Filing">Income Tax Return Filing</option>
+                    <option value="NTN Registration (Individual/AOP/Company)">NTN Registration (Individual/AOP/Company)</option>
+                    <option value="Sales Tax Registration (GST/PST)">Sales Tax Registration (GST/PST)</option>
+                    <option value="Monthly Sales Tax Return Filing">Monthly Sales Tax Return Filing</option>
+                    <option value="Withholding Tax Statement Filing">Withholding Tax Statement Filing</option>
+                    <option value="Tax Audit Representation">Tax Audit Representation</option>
+                    <option value="Tax Appeal & Litigation Representation">Tax Appeal & Litigation Representation</option>
+                    <option value="Exemption Certificate Application">Exemption Certificate Application</option>
                   </optgroup>
-                  <optgroup label="Out-of-Pocket Expenses (Disbursements)">
-                    <option value="Official Government/Challan Fees">Official Government/Challan Fees</option>
-                    <option value="Stamp Paper & Duty Charges">Stamp Paper & Duty Charges</option>
-                    <option value="Process Serving & Courier Fees">Process Serving & Courier Fees</option>
-                    <option value="Printing, Binding, and Stationery Charges">Printing, Binding, and Stationery Charges</option>
-                    <option value="Travel & Outstation Lodging Expenses">Travel & Outstation Lodging Expenses</option>
-                    <option value="Notarization & Attestation Charges">Notarization & Attestation Charges</option>
+                  <optgroup label="Company Registration (SECP)">
+                    <option value="Company Incorporation & Registration">Company Incorporation & Registration</option>
+                    <option value="Name Reservation (SECP)">Name Reservation (SECP)</option>
+                    <option value="Annual Returns Filing (Form A / Form 29)">Annual Returns Filing (Form A / Form 29)</option>
+                    <option value="Memorandum & Articles of Association Drafting">Memorandum & Articles of Association Drafting</option>
+                    <option value="Certified True Copy (CTC) Issuance">Certified True Copy (CTC) Issuance</option>
+                  </optgroup>
+                  <optgroup label="General Legal & Corporate Fees">
+                    <option value="Legal Consultation Fee">Legal Consultation Fee</option>
+                    <option value="Retainer Fee">Retainer Fee</option>
+                    <option value="Contract Drafting & Vetting">Contract Drafting & Vetting</option>
+                    <option value="Court Appearance & Representation Fee">Court Appearance & Representation Fee</option>
+                    <option value="Legal Notice & Reply Drafting">Legal Notice & Reply Drafting</option>
                   </optgroup>
                 </select>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex justify-end">
+              {/* Amount and Discount Section */}
+              {entryType === "DEBIT" ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Fee / Gross Amount (Rs.)
+                      </label>
+                      <input 
+                        required
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="8000"
+                        className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-bold text-slate-800"
+                        value={grossAmount}
+                        onChange={e => setGrossAmount(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                        <span>Discount (Rs.)</span>
+                        <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                          Optional
+                        </span>
+                      </label>
+                      <input 
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-bold text-rose-600"
+                        value={discount === 0 ? "" : discount}
+                        onChange={e => setDiscount(Math.max(0, Number(e.target.value) || 0))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Net Amount Summary Card */}
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-slate-500 block font-medium">Net Amount (Debited to Ledger):</span>
+                      <span className="font-extrabold text-base text-amber-600">
+                        Rs. {currentNetAmount.toLocaleString()}
+                      </span>
+                    </div>
+                    {Number(discount) > 0 && (
+                      <span className="text-emerald-700 bg-emerald-100/70 border border-emerald-200 px-2 py-0.5 rounded font-bold">
+                        Discount: Rs. {Number(discount).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Amount Received (Rs.)
+                  </label>
+                  <input 
+                    required
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-bold text-slate-800"
+                    value={grossAmount}
+                    onChange={e => setGrossAmount(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Date
+                </label>
+                <input 
+                  required
+                  type="date"
+                  className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                  value={entryDate}
+                  onChange={e => setEntryDate(e.target.value)}
+                />
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
                 <button 
                   type="submit"
                   disabled={isSubmitting}
                   className="bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-white px-6 py-2 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-amber-500/20 flex items-center"
                 >
                   {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                  {isSubmitting ? 'Updating...' : 'Save Changes'}
+                  {isSubmitting ? "Updating..." : "Save Changes"}
                 </button>
               </div>
             </form>
@@ -257,8 +398,9 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
         }}
         invoiceId={entry.invoice?.id}
         clientId={clientId}
-        description={entry.description.replace(/^Invoice\s+INV-\d+:\s*/i, '')}
+        description={initialServiceDescription}
         amount={entry.amount}
+        discount={entry.invoice?.discount || (Number(discount) || 0)}
         ledgerEntryId={entry.id}
         onInvoiceSaved={() => {
           router.refresh();

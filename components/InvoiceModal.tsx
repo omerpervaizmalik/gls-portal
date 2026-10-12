@@ -11,6 +11,7 @@ interface InvoiceModalProps {
   clientName?: string;
   description?: string;
   amount?: string | number;
+  discount?: string | number;
   ledgerEntryId?: string;
   onInvoiceSaved?: (invoiceNo?: string) => void;
 }
@@ -23,6 +24,7 @@ export function InvoiceModal({
   clientName,
   description,
   amount,
+  discount,
   ledgerEntryId,
   onInvoiceSaved
 }: InvoiceModalProps) {
@@ -56,6 +58,7 @@ export function InvoiceModal({
   if (clientId) queryParams.set("clientId", clientId);
   if (description) queryParams.set("desc", description);
   if (amount !== undefined && amount !== null && amount !== "") queryParams.set("amt", String(amount));
+  if (discount !== undefined && discount !== null && discount !== "") queryParams.set("discount", String(discount));
   if (ledgerEntryId) queryParams.set("ledgerEntryId", ledgerEntryId);
   queryParams.set("isModal", "true");
 
