@@ -78,57 +78,103 @@ export class OneDriveService {
     return await response.json();
   }
 
-  async listFolder(folderPath: string = 'root') {
-    let endpoint;
-    if (folderPath === '' || folderPath === 'root') {
-      endpoint = '/me/drive/root/children';
-    } else if (folderPath.includes('/') || !/^[a-z0-9!\-]+$/i.test(folderPath)) {
-      // If it looks like a path (has slashes or spaces), use the path syntax
-      const encodedPath = folderPath.split('/').map(p => encodeURIComponent(p)).join('/');
-      endpoint = `/me/drive/root:/${encodedPath}:/children`;
-    } else {
-      // Assume it's an ID
-      endpoint = `/me/drive/items/${folderPath}/children`;
+  private isDriveItemId(str: string): boolean {
+    return /^[a-zA-Z0-9!_\-]+$/.test(str) && str.length >= 24;
+  }
+
+  private resolveDrivePath(pathOrId?: string | null) {
+    if (!pathOrId || pathOrId === 'root') {
+      return {
+        isRoot: true,
+        childrenEndpoint: '/me/drive/root/children',
+        itemEndpoint: '/me/drive/root',
+        contentEndpoint: '/me/drive/root/content',
+        childContentEndpoint: (fileName: string) => `/me/drive/root:/${encodeURIComponent(fileName)}:/content`,
+        childFolderEndpoint: '/me/drive/root/children',
+      };
     }
+
+    let cleanPath = pathOrId.replace(/\\/g, '/').trim().replace(/^\/+|\/+$/g, '');
+    if (cleanPath.toLowerCase().startsWith('root/')) {
+      cleanPath = cleanPath.slice(5).replace(/^\/+|\/+$/g, '');
+    }
+    if (!cleanPath || cleanPath.toLowerCase() === 'root') {
+      return {
+        isRoot: true,
+        childrenEndpoint: '/me/drive/root/children',
+        itemEndpoint: '/me/drive/root',
+        contentEndpoint: '/me/drive/root/content',
+        childContentEndpoint: (fileName: string) => `/me/drive/root:/${encodeURIComponent(fileName)}:/content`,
+        childFolderEndpoint: '/me/drive/root/children',
+      };
+    }
+
+    const parts = cleanPath.split('/').filter(Boolean);
+
+    // If it's a single token and it looks like a long driveItem ID
+    if (parts.length === 1 && this.isDriveItemId(parts[0])) {
+      const id = parts[0];
+      return {
+        isRoot: false,
+        childrenEndpoint: `/me/drive/items/${id}/children`,
+        itemEndpoint: `/me/drive/items/${id}`,
+        contentEndpoint: `/me/drive/items/${id}/content`,
+        childContentEndpoint: (fileName: string) => `/me/drive/items/${id}:/${encodeURIComponent(fileName)}:/content`,
+        childFolderEndpoint: `/me/drive/items/${id}/children`,
+      };
+    }
+
+    // If first part is an ID and followed by relative path
+    if (parts.length > 1 && this.isDriveItemId(parts[0])) {
+      const id = parts[0];
+      const relPath = parts.slice(1).map(p => encodeURIComponent(p)).join('/');
+      return {
+        isRoot: false,
+        childrenEndpoint: `/me/drive/items/${id}:/${relPath}:/children`,
+        itemEndpoint: `/me/drive/items/${id}:/${relPath}:`,
+        contentEndpoint: `/me/drive/items/${id}:/${relPath}:/content`,
+        childContentEndpoint: (fileName: string) => `/me/drive/items/${id}:/${relPath}/${encodeURIComponent(fileName)}:/content`,
+        childFolderEndpoint: `/me/drive/items/${id}:/${relPath}:/children`,
+      };
+    }
+
+    // Otherwise, it is a path relative to drive root (e.g. "clients", "clients/001 - Omer", etc.)
+    const encodedPath = parts.map(p => encodeURIComponent(p)).join('/');
+    return {
+      isRoot: false,
+      childrenEndpoint: `/me/drive/root:/${encodedPath}:/children`,
+      itemEndpoint: `/me/drive/root:/${encodedPath}:`,
+      contentEndpoint: `/me/drive/root:/${encodedPath}:/content`,
+      childContentEndpoint: (fileName: string) => `/me/drive/root:/${encodedPath}/${encodeURIComponent(fileName)}:/content`,
+      childFolderEndpoint: `/me/drive/root:/${encodedPath}:/children`,
+    };
+  }
+
+  async listFolder(folderPath: string = 'root') {
+    const resolved = this.resolveDrivePath(folderPath);
+    const data = await this.graphFetch(`${resolved.childrenEndpoint}?$select=id,name,folder,file,size,lastModifiedDateTime`);
     
-    const data = await this.graphFetch(`${endpoint}?$select=id,name,folder,file,size,lastModifiedDateTime`);
-    
-    return data.value.map((item: any) => ({
+    let cleanParent = (!folderPath || folderPath === 'root') ? '' : folderPath.replace(/\\/g, '/').trim().replace(/^\/+|\/+$/g, '');
+    if (cleanParent.toLowerCase().startsWith('root/')) {
+      cleanParent = cleanParent.slice(5).replace(/^\/+|\/+$/g, '');
+    } else if (cleanParent.toLowerCase() === 'root') {
+      cleanParent = '';
+    }
+
+    return (data?.value || []).map((item: any) => ({
       id: item.id,
       name: item.name,
       folder: item.folder ? {} : undefined,
       file: item.file ? {} : undefined,
       size: item.size,
       lastModifiedDateTime: item.lastModifiedDateTime,
-      path: item.id
+      path: cleanParent ? `${cleanParent}/${item.name}` : item.name
     }));
-  }
-  private parseDrivePath(pathOrId: string) {
-    const isId = (str: string) => /^[a-z0-9!\-]+$/i.test(str) && str.length > 20;
-    if (!pathOrId || pathOrId === 'root') return { type: 'root' };
-    
-    if (!pathOrId.includes('/')) {
-      if (isId(pathOrId)) return { type: 'id', id: pathOrId };
-      return { type: 'path', path: encodeURIComponent(pathOrId) };
-    }
-
-    const parts = pathOrId.split('/');
-    if (isId(parts[0])) {
-      return { type: 'id_with_path', id: parts[0], path: parts.slice(1).map(p => encodeURIComponent(p)).join('/') };
-    }
-    if (isId(parts[parts.length - 1])) {
-      return { type: 'id', id: parts[parts.length - 1] };
-    }
-    return { type: 'path', path: parts.map(p => encodeURIComponent(p)).join('/') };
   }
 
   async uploadFile(parentFolderId: string, fileName: string, content: any) {
-    const parsed = this.parseDrivePath(parentFolderId);
-    let endpoint;
-    if (parsed.type === 'root') endpoint = `/me/drive/root:/${encodeURIComponent(fileName)}:/content`;
-    else if (parsed.type === 'id') endpoint = `/me/drive/items/${parsed.id}:/${encodeURIComponent(fileName)}:/content`;
-    else if (parsed.type === 'id_with_path') endpoint = `/me/drive/items/${parsed.id}:/${parsed.path}/${encodeURIComponent(fileName)}:/content`;
-    else endpoint = `/me/drive/root:/${parsed.path}/${encodeURIComponent(fileName)}:/content`;
+    const resolved = this.resolveDrivePath(parentFolderId);
+    const endpoint = resolved.childContentEndpoint(fileName);
 
     return await this.graphFetch(endpoint, {
       method: 'PUT',
@@ -138,15 +184,8 @@ export class OneDriveService {
   }
 
   async createFolder(parentFolderId: string, folderName: string) {
-    let endpoint;
-    if (parentFolderId === '' || parentFolderId === 'root') {
-      endpoint = '/me/drive/root/children';
-    } else if (parentFolderId.includes('/') || !/^[a-z0-9!\-]+$/i.test(parentFolderId)) {
-      const encodedPath = parentFolderId.split('/').map(p => encodeURIComponent(p)).join('/');
-      endpoint = `/me/drive/root:/${encodedPath}:/children`;
-    } else {
-      endpoint = `/me/drive/items/${parentFolderId}/children`;
-    }
+    const resolved = this.resolveDrivePath(parentFolderId);
+    const endpoint = resolved.childFolderEndpoint;
 
     return await this.graphFetch(endpoint, {
       method: 'POST',
@@ -159,34 +198,23 @@ export class OneDriveService {
   }
 
   async renameItem(itemIdOrPath: string, newName: string) {
-    const parsed = this.parseDrivePath(itemIdOrPath);
-    let endpoint;
-    if (parsed.type === 'id') endpoint = `/me/drive/items/${parsed.id}`;
-    else if (parsed.type === 'id_with_path') endpoint = `/me/drive/items/${parsed.id}:/${parsed.path}`;
-    else endpoint = `/me/drive/root:/${parsed.path}`;
-    return await this.graphFetch(endpoint, {
+    const resolved = this.resolveDrivePath(itemIdOrPath);
+    return await this.graphFetch(resolved.itemEndpoint, {
       method: 'PATCH',
       body: JSON.stringify({ name: newName })
     });
   }
 
   async deleteItem(itemIdOrPath: string) {
-    const parsed = this.parseDrivePath(itemIdOrPath);
-    let endpoint;
-    if (parsed.type === 'id') endpoint = `/me/drive/items/${parsed.id}`;
-    else if (parsed.type === 'id_with_path') endpoint = `/me/drive/items/${parsed.id}:/${parsed.path}`;
-    else endpoint = `/me/drive/root:/${parsed.path}`;
-    await this.graphFetch(endpoint, { method: 'DELETE' });
+    const resolved = this.resolveDrivePath(itemIdOrPath);
+    await this.graphFetch(resolved.itemEndpoint, { method: 'DELETE' });
     return { success: true };
   }
 
   async getDownloadUrl(fileIdOrPath: string): Promise<string> {
     const token = await this.getValidToken();
-    const parsed = this.parseDrivePath(fileIdOrPath);
-    let endpoint;
-    if (parsed.type === 'id') endpoint = `/me/drive/items/${parsed.id}/content`;
-    else if (parsed.type === 'id_with_path') endpoint = `/me/drive/items/${parsed.id}:/${parsed.path}:/content`;
-    else endpoint = `/me/drive/root:/${parsed.path}:/content`;
+    const resolved = this.resolveDrivePath(fileIdOrPath);
+    const endpoint = resolved.contentEndpoint;
     
     console.log("[ONEDRIVE] getDownloadUrl via /content redirect for:", endpoint);
     const url = `https://graph.microsoft.com/v1.0${endpoint}`;
@@ -216,11 +244,8 @@ export class OneDriveService {
 
   async getFileContent(fileIdOrPath: string): Promise<ArrayBuffer> {
     const token = await this.getValidToken();
-    const parsed = this.parseDrivePath(fileIdOrPath);
-    let endpoint;
-    if (parsed.type === 'id') endpoint = `/me/drive/items/${parsed.id}/content`;
-    else if (parsed.type === 'id_with_path') endpoint = `/me/drive/items/${parsed.id}:/${parsed.path}:/content`;
-    else endpoint = `/me/drive/root:/${parsed.path}:/content`;
+    const resolved = this.resolveDrivePath(fileIdOrPath);
+    const endpoint = resolved.contentEndpoint;
     
     console.log("[ONEDRIVE] getFileContent fetching endpoint:", endpoint);
     const url = `https://graph.microsoft.com/v1.0${endpoint}`;

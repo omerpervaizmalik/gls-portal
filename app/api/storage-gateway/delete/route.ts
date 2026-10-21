@@ -7,7 +7,11 @@ import { logActivity } from "@/lib/logger";
 
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions as any) as any;
-  const itemPath = req.nextUrl.searchParams.get('path');
+  const rawPath = req.nextUrl.searchParams.get('path');
+  let itemPath = rawPath ? rawPath.replace(/\\/g, '/').trim().replace(/^\/+|\/+$/g, '') : null;
+  if (itemPath && itemPath.toLowerCase().startsWith('root/')) {
+    itemPath = itemPath.slice(5).replace(/^\/+|\/+$/g, '');
+  }
 
   if (!session?.user?.id || !itemPath) return NextResponse.json({ error: 'Unauthorized or missing parameters' }, { status: 400 });
 

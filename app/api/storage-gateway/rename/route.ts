@@ -4,10 +4,13 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { logActivity } from "@/lib/logger";
-
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions as any) as any;
-  const { path: oldPath, newName } = await req.json();
+  const { path: rawOldPath, newName } = await req.json();
+  let oldPath = (rawOldPath || '').replace(/\\/g, '/').trim().replace(/^\/+|\/+$/g, '');
+  if (oldPath.toLowerCase().startsWith('root/')) {
+    oldPath = oldPath.slice(5).replace(/^\/+|\/+$/g, '');
+  }
 
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

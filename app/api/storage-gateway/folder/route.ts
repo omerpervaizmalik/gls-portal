@@ -7,7 +7,13 @@ import { logActivity } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions as any) as any;
-  const { folderName, parentPath } = await req.json();
+  const { folderName, parentPath: rawParent } = await req.json();
+  let parentPath = (rawParent || '').replace(/\\/g, '/').trim().replace(/^\/+|\/+$/g, '');
+  if (parentPath.toLowerCase().startsWith('root/')) {
+    parentPath = parentPath.slice(5).replace(/^\/+|\/+$/g, '');
+  } else if (parentPath.toLowerCase() === 'root') {
+    parentPath = '';
+  }
 
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

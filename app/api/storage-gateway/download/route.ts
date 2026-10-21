@@ -8,7 +8,11 @@ const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
   const userId = req.headers.get('x-user-id') || req.nextUrl.searchParams.get('userId');
-  const itemPath = req.nextUrl.searchParams.get('path');
+  const rawPath = req.nextUrl.searchParams.get('path');
+  let itemPath = rawPath ? rawPath.replace(/\\/g, '/').trim().replace(/^\/+|\/+$/g, '') : null;
+  if (itemPath && itemPath.toLowerCase().startsWith('root/')) {
+    itemPath = itemPath.slice(5).replace(/^\/+|\/+$/g, '');
+  }
 
   const isPublicProfile = itemPath?.startsWith('photos/') || itemPath?.startsWith('profiles/');
 

@@ -49,7 +49,17 @@ function FileArchiveContent() {
   const router = useRouter();
   const pathname = usePathname();
   const isAdmin = session?.user?.role === 'ADMIN';
-  const initialPath = searchParams.get('path') || '';
+  const normalizePath = (p: string) => {
+    let clean = p.replace(/\\/g, '/').trim().replace(/^\/+|\/+$/g, '');
+    if (clean.toLowerCase().startsWith('root/')) {
+      clean = clean.slice(5).replace(/^\/+|\/+$/g, '');
+    } else if (clean.toLowerCase() === 'root') {
+      clean = '';
+    }
+    return clean;
+  };
+
+  const initialPath = normalizePath(searchParams.get('path') || '');
   
   const [items, setItems] = useState<FileItem[]>([]);
   const [path, setPath] = useState<string>(initialPath);
@@ -65,7 +75,7 @@ function FileArchiveContent() {
 
   useEffect(() => {
     // If the URL changes (e.g. from a direct link or back button), update the local path state
-    const currentPath = searchParams.get('path') || '';
+    const currentPath = normalizePath(searchParams.get('path') || '');
     setPath(currentPath);
   }, [searchParams]);
 
@@ -73,7 +83,7 @@ function FileArchiveContent() {
     const fetchFiles = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/storage-gateway?path=${path}`);
+        const res = await fetch(`/api/storage-gateway?path=${encodeURIComponent(path)}`);
         const data = await res.json();
 
         if (!res.ok) {
@@ -260,11 +270,13 @@ function FileArchiveContent() {
     if (!newName) return;
 
     try {
-      await fetch('/api/storage-gateway/rename', {
+      const res = await fetch('/api/storage-gateway/rename', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin-id' },
         body: JSON.stringify({ path: oldPath, newName })
       });
+      if (!res.ok) throw new Error("Failed to rename");
+      window.location.reload();
     } catch (e) {
       alert("Error renaming");
     }
@@ -274,10 +286,12 @@ function FileArchiveContent() {
     if (!confirm("Are you sure you want to delete this?")) return;
 
     try {
-      await fetch(`/api/storage-gateway/delete?path=${itemPath}`, {
+      const res = await fetch(`/api/storage-gateway/delete?path=${encodeURIComponent(itemPath)}`, {
         method: 'DELETE',
         headers: { 'x-user-id': 'admin-id' }
       });
+      if (!res.ok) throw new Error("Failed to delete");
+      window.location.reload();
     } catch (e) {
       alert("Error deleting");
     }

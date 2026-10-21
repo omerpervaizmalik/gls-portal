@@ -11,7 +11,13 @@ export async function GET(req: NextRequest) {
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const folderPath = searchParams.get('path') || '';
+    const rawPath = searchParams.get('path') || '';
+    let folderPath = rawPath.replace(/\\/g, '/').trim().replace(/^\/+|\/+$/g, '');
+    if (folderPath.toLowerCase().startsWith('root/')) {
+      folderPath = folderPath.slice(5).replace(/^\/+|\/+$/g, '');
+    } else if (folderPath.toLowerCase() === 'root') {
+      folderPath = '';
+    }
 
     let user = null;
     if (token?.email) {
@@ -49,7 +55,13 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const targetFolderPath = formData.get('targetFolderPath') as string || '';
+    const rawTarget = formData.get('targetFolderPath') as string || '';
+    let targetFolderPath = rawTarget.replace(/\\/g, '/').trim().replace(/^\/+|\/+$/g, '');
+    if (targetFolderPath.toLowerCase().startsWith('root/')) {
+      targetFolderPath = targetFolderPath.slice(5).replace(/^\/+|\/+$/g, '');
+    } else if (targetFolderPath.toLowerCase() === 'root') {
+      targetFolderPath = '';
+    }
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
