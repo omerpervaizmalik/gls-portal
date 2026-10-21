@@ -1,9 +1,10 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import { FileText, Edit2, Trash2, X, Loader2, Tag, Percent } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { InvoiceModal } from "@/components/InvoiceModal";
+import { isNative } from "@/lib/platform";
 
 export function EntryActions({ entry, clientId }: { entry: any, clientId: string }) {
   const router = useRouter();
@@ -39,6 +40,16 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
   );
 
   const handleGenerateInvoice = () => {
+    const cleanDesc = entry.description ? entry.description.replace(/^Invoice\s+INV-\d+:\s*/i, '') : '';
+    if (isNative()) {
+      const qp = new URLSearchParams();
+      if (clientId) qp.set("clientId", clientId);
+      if (cleanDesc) qp.set("desc", cleanDesc);
+      if (entry.amount !== undefined && entry.amount !== null) qp.set("amt", String(entry.amount));
+      if (entry.id) qp.set("ledgerEntryId", entry.id);
+      router.push(`/fams/invoice/new?${qp.toString()}`);
+      return;
+    }
     // Open in-window floating invoice modal instead of new tab
     setIsInvoiceModalOpen(true);
   };

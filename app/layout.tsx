@@ -46,10 +46,13 @@ export default function RootLayout({
 }>) {
   const [mounted, setMounted] = React.useState(false);
   const [native, setNative] = React.useState(false);
+  const [isIframe, setIsIframe] = React.useState(false);
 
   React.useEffect(() => {
     initMobileAppStyling();
-    const nativeMode = isNative();
+    const inIframe = typeof window !== 'undefined' && window.self !== window.top;
+    setIsIframe(inIframe);
+    const nativeMode = isNative() && !inIframe;
     setNative(nativeMode);
     setMounted(true);
 
@@ -78,6 +81,10 @@ export default function RootLayout({
             <GlobalActivityTracker />
           {!mounted ? (
             <div style={{ width: '100vw', height: '100vh', background: '#0a0f1e' }} />
+          ) : isIframe ? (
+            <div className="w-full h-full bg-white overflow-auto">
+              {children}
+            </div>
           ) : (
             <BiometricGate>
               {native ? (

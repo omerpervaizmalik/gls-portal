@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -7,6 +7,7 @@ import { Save, CheckCircle, ExternalLink, Send, ArrowRight, X, FileText, Loader2
 import CategorySelect from "@/components/CategorySelect";
 import { ClientOrWalkinSelect } from "./ClientOrWalkinSelect";
 import { InvoiceModal } from "@/components/InvoiceModal";
+import { isNative } from "@/lib/platform";
 
 interface ClientData {
   id: string;
@@ -397,7 +398,16 @@ export function IncomeForm({ clients }: IncomeFormProps) {
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsInvoiceModalOpen(true)}
+                  onClick={() => {
+                    if (isNative()) {
+                      const qp = new URLSearchParams();
+                      if (successData.invoiceId) qp.set("id", successData.invoiceId);
+                      if (successData.client?.id) qp.set("clientId", successData.client.id);
+                      router.push(`/fams/invoice/new?${qp.toString()}`);
+                    } else {
+                      setIsInvoiceModalOpen(true);
+                    }
+                  }}
                   className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors flex items-center justify-center"
                 >
                   <FileText className="w-4 h-4 mr-1.5 text-slate-500" />

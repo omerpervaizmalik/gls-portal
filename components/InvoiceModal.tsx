@@ -2,6 +2,8 @@
 
 import React, { useEffect } from "react";
 import { X, FileText, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { isNative } from "@/lib/platform";
 
 interface InvoiceModalProps {
   isOpen: boolean;
@@ -28,6 +30,28 @@ export function InvoiceModal({
   ledgerEntryId,
   onInvoiceSaved
 }: InvoiceModalProps) {
+  const router = useRouter();
+
+  const queryParams = new URLSearchParams();
+  if (invoiceId) queryParams.set("id", invoiceId);
+  if (clientId) queryParams.set("clientId", clientId);
+  if (description) queryParams.set("desc", description);
+  if (amount !== undefined && amount !== null && amount !== "") queryParams.set("amt", String(amount));
+  if (discount !== undefined && discount !== null && discount !== "") queryParams.set("discount", String(discount));
+  if (ledgerEntryId) queryParams.set("ledgerEntryId", ledgerEntryId);
+
+  const fullPageUrl = `/fams/invoice/new?${queryParams.toString()}`;
+  queryParams.set("isModal", "true");
+  const invoiceUrl = `/fams/invoice/new?${queryParams.toString()}`;
+
+  // On native mobile app, seamlessly navigate directly to full page instead of cramped iframe
+  useEffect(() => {
+    if (isOpen && isNative()) {
+      onClose();
+      router.push(fullPageUrl);
+    }
+  }, [isOpen, fullPageUrl, onClose, router]);
+
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'INVOICE_SAVED') {
@@ -51,18 +75,7 @@ export function InvoiceModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
-  const queryParams = new URLSearchParams();
-  if (invoiceId) queryParams.set("id", invoiceId);
-  if (clientId) queryParams.set("clientId", clientId);
-  if (description) queryParams.set("desc", description);
-  if (amount !== undefined && amount !== null && amount !== "") queryParams.set("amt", String(amount));
-  if (discount !== undefined && discount !== null && discount !== "") queryParams.set("discount", String(discount));
-  if (ledgerEntryId) queryParams.set("ledgerEntryId", ledgerEntryId);
-  queryParams.set("isModal", "true");
-
-  const invoiceUrl = `/fams/invoice/new?${queryParams.toString()}`;
+  if (!isOpen || isNative()) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-4 md:p-6 print:hidden animate-in fade-in duration-200">
@@ -92,7 +105,7 @@ export function InvoiceModal({
 
           <div className="flex items-center gap-2">
             <a
-              href={invoiceUrl.replace("&isModal=true", "")}
+              href={fullPageUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"

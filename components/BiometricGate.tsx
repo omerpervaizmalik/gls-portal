@@ -16,15 +16,43 @@ export default function BiometricGate({ children }: BiometricGateProps) {
   const [error, setError] = useState<string | null>(null);
 
   const checkBiometrics = async () => {
+    // 1. If running inside an iframe, NEVER block or prompt for biometrics
+    if (typeof window !== 'undefined' && window.self !== window.top) {
+      setIsAuthenticated(true);
+      setIsChecking(false);
+      return;
+    }
+
+    // 2. If not running on native mobile device, skip
     if (!isNative()) {
       setIsAuthenticated(true);
       setIsChecking(false);
       return;
     }
 
+    // 3. If already authenticated in this session, skip
     try {
-      const result = await NativeBiometric.isAvailable();
-      if (result.isAvailable) {
+      if (typeof window !== 'undefined' && sessionStorage.getItem('biometric_auth_passed') === 'true') {
+        setIsAuthenticated(true);
+        setIsChecking(false);
+        return;
+      }
+    } catch {
+      // Ignore storage errors in private browsing
+    }
+
+    // 4. Wrap with a timeout safety guard (3.5s) to prevent infinite hanging
+    const timeoutPromise = new Promise<{ isAvailable: boolean }>((_, reject) =>
+      setTimeout(() => reject(new Error('Biometric check timed out')), 3500)
+    );
+
+    try {
+      const result = await Promise.race([
+        NativeBiometric.isAvailable(),
+        timeoutPromise
+      ]);
+
+      if (result && result.isAvailable) {
         setHasBiometrics(true);
         performAuth();
       } else {
@@ -32,25 +60,41 @@ export default function BiometricGate({ children }: BiometricGateProps) {
         setIsAuthenticated(true);
         setIsChecking(false);
       }
-    } catch (err) {
-      console.error('Biometric check failed:', err);
+    } catch (err: any) {
+      console.warn('Biometric check bypassed or failed:', err?.message || err);
+      // Fail-open on timeout or hardware check error so app is never stuck
       setIsAuthenticated(true);
       setIsChecking(false);
     }
   };
 
   const performAuth = async () => {
+    setError(null);
     try {
-      await NativeBiometric.verifyIdentity({
-        reason: "Accessing Get Legal Solution Management Portal",
-        title: "Security Verification",
-        subtitle: "Authenticate to continue",
-        description: "Please use your fingerprint or face recognition to unlock the app.",
-      });
+      const authTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Authentication prompt timed out')), 25000)
+      );
+
+      await Promise.race([
+        NativeBiometric.verifyIdentity({
+          reason: "Accessing Get Legal Solution Management Portal",
+          title: "Security Verification",
+          subtitle: "Authenticate to continue",
+          description: "Please use your fingerprint or face recognition to unlock the app.",
+        }),
+        authTimeout
+      ]);
+
+      try {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('biometric_auth_passed', 'true');
+        }
+      } catch {}
+
       setIsAuthenticated(true);
       setIsChecking(false);
     } catch (err: any) {
-      setError(err.message || "Authentication failed");
+      setError(err?.message || "Authentication failed");
       setIsChecking(false);
     }
   };

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Plus, Download, Printer, FileText, X, Loader2, FolderOpen, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { InvoiceModal } from "@/components/InvoiceModal";
+import { isNative } from "@/lib/platform";
 
 export function LedgerControls({ 
   clientId, 
@@ -111,6 +112,10 @@ GLS Management`;
   };
 
   const handleGenerateInvoice = () => {
+    if (isNative()) {
+      router.push(`/fams/invoice/new?clientId=${clientId}`);
+      return;
+    }
     // Open in-window floating modal instead of new browser tab
     setInvoiceModalParams({});
     setIsInvoiceModalOpen(true);
@@ -135,6 +140,15 @@ GLS Management`;
         router.refresh();
         
         if (generateInvoice) {
+          if (isNative()) {
+            const qp = new URLSearchParams();
+            if (clientId) qp.set("clientId", clientId);
+            if (description) qp.set("desc", description);
+            if (amount) qp.set("amt", String(amount));
+            if (createdEntry?.id) qp.set("ledgerEntryId", createdEntry.id);
+            router.push(`/fams/invoice/new?${qp.toString()}`);
+            return;
+          }
           // Open in-window floating modal with new entry details and linked ledgerEntryId
           setInvoiceModalParams({
             description,

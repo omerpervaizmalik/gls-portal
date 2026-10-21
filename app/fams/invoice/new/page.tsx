@@ -427,9 +427,21 @@ GLS Management`;
       {/* Non-printable Controls */}
       <div className={`max-w-4xl mx-auto mb-6 print:hidden flex flex-wrap gap-3 items-center justify-between bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 ${isModal ? 'mt-1' : ''}`}>
         {!isModal ? (
-          <Link href={`/fams/ledger/${clientId || ''}`} className="flex items-center text-slate-500 hover:text-slate-700 font-medium text-sm">
-            <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Ledger
-          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              if (clientId) {
+                router.push(`/fams/ledger/${clientId}`);
+              } else if (typeof window !== 'undefined' && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push('/fams/invoice');
+              }
+            }}
+            className="flex items-center text-slate-500 hover:text-slate-700 font-medium text-sm"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
+          </button>
         ) : (
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Invoice No:</span>
