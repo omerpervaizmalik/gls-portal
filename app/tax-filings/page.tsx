@@ -332,7 +332,7 @@ export default function TaxFilingsPage() {
         </header>
 
         {/* Stats Row */}
-        <div className={`px-3 md:px-6 py-3 md:py-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${isAdmin ? 'xl:grid-cols-9' : 'xl:grid-cols-7'} gap-2.5 md:gap-3 bg-white border-b border-slate-100 shrink-0`}>
+        <div className={`px-3 md:px-6 py-3 md:py-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${isAdmin ? 'xl:grid-cols-7' : 'xl:grid-cols-5'} gap-2.5 md:gap-3 bg-white border-b border-slate-100 shrink-0`}>
           <StatCard 
             icon={Calendar} 
             label="Total" 
@@ -340,22 +340,6 @@ export default function TaxFilingsPage() {
             color="blue" 
             active={stageFilter === "ALL"}
             onClick={() => setStageFilter("ALL")}
-          />
-          <StatCard 
-            icon={PhoneCall} 
-            label="Called" 
-            value={stats.contacted} 
-            color="amber" 
-            active={stageFilter === "CONTACTED"}
-            onClick={() => setStageFilter(stageFilter === "CONTACTED" ? "ALL" : "CONTACTED")}
-          />
-          <StatCard 
-            icon={FileSearch} 
-            label="Docs" 
-            value={stats.docsObtained} 
-            color="blue" 
-            active={stageFilter === "DOCS"}
-            onClick={() => setStageFilter(stageFilter === "DOCS" ? "ALL" : "DOCS")}
           />
           <StatCard 
             icon={Clock} 
