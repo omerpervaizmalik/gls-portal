@@ -1,3 +1,9 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/admin/backup/cloud?cron=1",
+      "schedule": "0 20 * * *"
+    }
+  ]
 }

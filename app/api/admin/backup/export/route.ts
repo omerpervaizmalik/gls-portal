@@ -1,24 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { BACKUP_MODULES_MAP, generateBackupPayload } from "@/lib/backup-service";
 
 export const dynamic = "force-dynamic";
-
-const MODULES_MAP: Record<string, any> = {
-  User: prisma.user,
-  Client: prisma.client,
-  Matter: prisma.matter,
-  Task: prisma.task,
-  Filing: prisma.filing,
-  Invoice: prisma.invoice,
-  LedgerEntry: prisma.ledgerEntry,
-  TaskLog: prisma.taskLog,
-  FilingLog: prisma.filingLog,
-  Disbursement: prisma.disbursement,
-  IncomeRecord: prisma.incomeRecord,
-  UserProfile: prisma.userProfile,
-};
 
 export async function GET(req: NextRequest) {
   try {
@@ -34,29 +19,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Module parameter is required" }, { status: 400 });
     }
 
-    let exportData: any = {};
-
-    if (moduleParam === "ALL") {
-      // Export all predefined modules
-      for (const key of Object.keys(MODULES_MAP)) {
-        try {
-          const data = await MODULES_MAP[key].findMany();
-          exportData[key] = data;
-        } catch (e) {
-          console.error(`Failed to export module ${key}`, e);
-        }
-      }
-    } else {
-      // Export specific module
-      const dbModule = MODULES_MAP[moduleParam];
-      if (!dbModule) {
-        return NextResponse.json({ error: "Invalid module specified" }, { status: 400 });
-      }
-      const data = await dbModule.findMany();
-      exportData[moduleParam] = data;
+    if (moduleParam === "STATS") {
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        Object.keys(BACKUP_MODULES_MAP).map(async (key) => {
+          try {
+            counts[key] = await BACKUP_MODULES_MAP[key].count();
+          } catch {
+            counts[key] = 0;
+          }
+        })
+      );
+      return NextResponse.json({ counts });
     }
 
-    // Set headers for file download
+    const exportData = await generateBackupPayload(moduleParam);
+
     return new NextResponse(JSON.stringify(exportData, null, 2), {
       status: 200,
       headers: {
@@ -64,9 +42,8 @@ export async function GET(req: NextRequest) {
         "Content-Type": "application/json",
       },
     });
-
   } catch (error: any) {
     console.error("Backup Export Error:", error);
-    return NextResponse.json({ error: "Internal Server Error during export" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Internal Server Error during export" }, { status: 500 });
   }
 }

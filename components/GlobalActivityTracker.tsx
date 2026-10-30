@@ -30,6 +30,15 @@ export default function GlobalActivityTracker() {
       console.error('Failed to log navigation', e);
     });
 
+    // Silently check once per browser session if a 24-hour OneDrive Restore Point is due
+    if ((session.user as any)?.role === 'ADMIN' && typeof window !== 'undefined') {
+      const checkedKey = 'gls_onedrive_autobackup_checked';
+      if (!sessionStorage.getItem(checkedKey)) {
+        sessionStorage.setItem(checkedKey, '1');
+        fetch('/api/admin/backup/cloud?check=1').catch(() => {});
+      }
+    }
+
   }, [pathname, searchParams, status, session]);
 
   return null;
