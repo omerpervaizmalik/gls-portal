@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getIncomeTaxBillAmount, syncFilingBilled } from "@/lib/tax-filing-sync";
 
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -55,6 +56,16 @@ export async function PUT(req: NextRequest) {
     revalidatePath("/fams");
     revalidatePath(`/fams/ledger/${existingInvoice.clientId}`);
     revalidatePath("/fams/invoice");
+
+    // Keep Tax Filing Record bill amount in sync when an Income Tax invoice is edited
+    const oldTaxAmount = getIncomeTaxBillAmount(existingInvoice.items, existingInvoice.totalAmount);
+    const newTaxAmount = getIncomeTaxBillAmount(updatedInvoice.items, updatedInvoice.totalAmount);
+    if (newTaxAmount > 0 || oldTaxAmount > 0) {
+      await syncFilingBilled(existingInvoice.clientId, newTaxAmount - oldTaxAmount, {
+        invoiceNo: existingInvoice.invoiceNo,
+        userName: session.user?.name
+      });
+    }
 
     return NextResponse.json(updatedInvoice);
   } catch (error: any) {

@@ -1,9 +1,10 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getNextInvoiceNumber } from "@/lib/invoices";
+import { isIncomeTaxFilingText, syncFilingBilled, syncFilingPayment } from "@/lib/tax-filing-sync";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -65,6 +66,17 @@ export async function POST(req: NextRequest) {
           paymentMode: paymentMode || null
         }
       });
+
+      // Sync Tax Filing Record: an Income Tax filing receipt bills the filing (if not
+      // already billed by an invoice) and then the payment marks it Paid / pending.
+      if (isIncomeTaxFilingText(serviceType)) {
+        await syncFilingBilled(clientId, numericAmount, {
+          invoiceNo,
+          userName: session.user?.name,
+          onlyIfNotBilled: true
+        });
+      }
+      await syncFilingPayment(clientId, numericAmount, { userName: session.user?.name });
 
       client = await prisma.client.findUnique({
         where: { id: clientId },

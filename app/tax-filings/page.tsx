@@ -27,7 +27,8 @@ import {
   Users,
   CheckSquare,
   Square,
-  Edit3
+  Edit3,
+  AlertCircle
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -246,6 +247,7 @@ export default function TaxFilingsPage() {
     if (stageFilter === "WORKING") return matchesSearch && f.isWorking;
     if (stageFilter === "DRAFT_READY") return matchesSearch && f.isDraftReady;
     if (stageFilter === "FILED") return matchesSearch && f.isFiled;
+    if (stageFilter === "NOT_FILED") return matchesSearch && !f.isFiled;
     if (stageFilter === "BILLED") return matchesSearch && f.isBilled;
     if (stageFilter === "PAID") return matchesSearch && f.isPaid;
     
@@ -259,6 +261,7 @@ export default function TaxFilingsPage() {
     working: filings.filter(f => f.isWorking).length,
     draftReady: filings.filter(f => f.isDraftReady).length,
     filed: filings.filter(f => f.isFiled).length,
+    pendingFiled: filings.filter(f => !f.isFiled).length,
     billed: filings.filter(f => f.isBilled).length,
     paid: filings.filter(f => f.isPaid).length,
   };
@@ -329,7 +332,7 @@ export default function TaxFilingsPage() {
         </header>
 
         {/* Stats Row */}
-        <div className={`px-3 md:px-6 py-3 md:py-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${isAdmin ? 'xl:grid-cols-8' : 'xl:grid-cols-6'} gap-2.5 md:gap-3 bg-white border-b border-slate-100 shrink-0`}>
+        <div className={`px-3 md:px-6 py-3 md:py-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${isAdmin ? 'xl:grid-cols-9' : 'xl:grid-cols-7'} gap-2.5 md:gap-3 bg-white border-b border-slate-100 shrink-0`}>
           <StatCard 
             icon={Calendar} 
             label="Total" 
@@ -377,6 +380,14 @@ export default function TaxFilingsPage() {
             color="emerald" 
             active={stageFilter === "FILED"}
             onClick={() => setStageFilter(stageFilter === "FILED" ? "ALL" : "FILED")}
+          />
+          <StatCard 
+            icon={AlertCircle} 
+            label="Pending Filed" 
+            value={stats.pendingFiled} 
+            color="orange" 
+            active={stageFilter === "NOT_FILED"}
+            onClick={() => setStageFilter(stageFilter === "NOT_FILED" ? "ALL" : "NOT_FILED")}
           />
           {isAdmin && (
             <>
@@ -427,6 +438,7 @@ export default function TaxFilingsPage() {
                 <option value="WORKING">WORKING</option>
                 <option value="DRAFT_READY">DRAFT READY</option>
                 <option value="FILED">FILED</option>
+                <option value="NOT_FILED">NOT FILED YET</option>
                 {isAdmin && (
                   <>
                     <option value="BILLED">BILLED</option>
@@ -667,7 +679,8 @@ function StatCard({
     indigo: "bg-indigo-50 text-indigo-600 border border-indigo-200/50",
     emerald: "bg-emerald-50 text-emerald-600 border border-emerald-200/50",
     purple: "bg-purple-50 text-purple-600 border border-purple-200/50",
-    rose: "bg-rose-50 text-rose-600 border border-rose-200/50"
+    rose: "bg-rose-50 text-rose-600 border border-rose-200/50",
+    orange: "bg-orange-50 text-orange-600 border border-orange-200/50"
   };
   
   return (

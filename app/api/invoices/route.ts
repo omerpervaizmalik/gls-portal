@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getNextInvoiceNumber } from "@/lib/invoices";
+import { getIncomeTaxBillAmount, syncFilingBilled } from "@/lib/tax-filing-sync";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
         where: { ledgerEntryId }
       });
       if (existingInvoiceForLedger) {
+        const oldTaxAmount = getIncomeTaxBillAmount(existingInvoiceForLedger.items, existingInvoiceForLedger.totalAmount);
         const updatedInvoice = await prisma.invoice.update({
           where: { id: existingInvoiceForLedger.id },
           data: {
@@ -63,6 +65,15 @@ export async function POST(req: NextRequest) {
             description: ledgerDescription
           }
         });
+
+        // Sync Tax Filing Record (Billed) if this invoice is for Income Tax filing
+        const newTaxAmount = getIncomeTaxBillAmount(items, parsedTotal);
+        if (newTaxAmount > 0 || oldTaxAmount > 0) {
+          await syncFilingBilled(clientId, newTaxAmount - oldTaxAmount, {
+            invoiceNo: existingInvoiceForLedger.invoiceNo,
+            userName: session.user?.name
+          });
+        }
 
         revalidatePath("/fams");
         revalidatePath(`/fams/ledger/${clientId}`);
@@ -110,6 +121,15 @@ export async function POST(req: NextRequest) {
         status: 'ISSUED'
       }
     });
+
+    // Auto-mark Tax Filing Record as Billed for Income Tax filing invoices
+    const taxBillAmount = getIncomeTaxBillAmount(items, parsedTotal);
+    if (taxBillAmount > 0) {
+      await syncFilingBilled(clientId, taxBillAmount, {
+        invoiceNo: invoice.invoiceNo,
+        userName: session.user?.name
+      });
+    }
 
     revalidatePath("/fams");
     revalidatePath(`/fams/ledger/${clientId}`);

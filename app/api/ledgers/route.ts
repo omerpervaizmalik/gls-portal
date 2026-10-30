@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { syncFilingPayment } from "@/lib/tax-filing-sync";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -27,6 +28,11 @@ export async function POST(req: NextRequest) {
         paymentMode,
       }
     });
+
+    // A payment received from the client updates the Tax Filing Record (Paid / Pending)
+    if (type === "CREDIT") {
+      await syncFilingPayment(clientId, parseFloat(amount), { userName: session.user?.name });
+    }
 
     revalidatePath("/fams");
     revalidatePath(`/fams/ledger/${clientId}`);
