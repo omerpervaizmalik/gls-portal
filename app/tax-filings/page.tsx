@@ -28,7 +28,8 @@ import {
   CheckSquare,
   Square,
   Edit3,
-  AlertCircle
+  AlertCircle,
+  Crown
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -49,9 +50,11 @@ interface Filing {
   notes: string;
   filledBy?: string;
   client: {
+    id?: string;
     cfNo: string;
     name: string;
     mobileNo?: string;
+    isPrivileged?: boolean;
   };
 }
 
@@ -250,6 +253,7 @@ export default function TaxFilingsPage() {
     if (stageFilter === "NOT_FILED") return matchesSearch && !f.isFiled;
     if (stageFilter === "BILLED") return matchesSearch && f.isBilled;
     if (stageFilter === "PAID") return matchesSearch && f.isPaid;
+    if (stageFilter === "PRIVILEGED") return matchesSearch && !!f.client?.isPrivileged;
     
     return matchesSearch;
   });
@@ -423,6 +427,7 @@ export default function TaxFilingsPage() {
                 <option value="DRAFT_READY">DRAFT READY</option>
                 <option value="FILED">FILED</option>
                 <option value="NOT_FILED">NOT FILED YET</option>
+                <option value="PRIVILEGED">PRIVILEGED CLIENTS</option>
                 {isAdmin && (
                   <>
                     <option value="BILLED">BILLED</option>
@@ -494,7 +499,37 @@ export default function TaxFilingsPage() {
                     <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md font-mono">{filing.client?.cfNo || "???"}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm font-bold text-slate-800">{filing.client?.name || "Unknown Client"}</div>
+                    <div className="flex items-center flex-wrap gap-1.5">
+                      <span className="text-sm font-bold text-slate-800">{filing.client?.name || "Unknown Client"}</span>
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const cId = filing.clientId || filing.client?.id;
+                          if (!cId) return;
+                          const nextVal = !filing.client?.isPrivileged;
+                          setFilings(prev => prev.map(f => f.clientId === cId ? { ...f, client: { ...f.client, isPrivileged: nextVal } } : f));
+                          try {
+                            await fetch(`/api/clients/${cId}`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ isPrivileged: nextVal })
+                            });
+                          } catch {
+                            fetchFilings();
+                          }
+                        }}
+                        title={filing.client?.isPrivileged ? "Privileged Client (Free Filing) — click to unmark" : "Click to mark as Privileged Client (Free Filing)"}
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all ${
+                          filing.client?.isPrivileged
+                            ? "bg-amber-100 text-amber-800 border border-amber-300 shadow-sm"
+                            : "opacity-0 group-hover:opacity-100 bg-slate-100 text-slate-400 hover:bg-amber-50 hover:text-amber-600"
+                        }`}
+                      >
+                        <Crown size={10} className={filing.client?.isPrivileged ? "text-amber-600" : "text-slate-400"} />
+                        {filing.client?.isPrivileged ? "Privileged" : "Mark Privileged"}
+                      </button>
+                    </div>
                     <div className="flex items-center space-x-2 mt-0.5">
                       <div className="text-[10px] text-slate-400 font-medium">{filing.client?.mobileNo || "No contact info"}</div>
                       {filing.filledBy && (
@@ -557,12 +592,13 @@ export default function TaxFilingsPage() {
 
                   <td className="px-6 py-4">
                     <input 
+                      key={`${filing.id}-${filing.notes || ""}`}
                       type="text"
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:bg-white focus:ring-2 focus:ring-amber-400/20 focus:border-amber-400 transition-all"
-                      placeholder="Add note..."
+                      placeholder={filing.client?.isPrivileged ? "Privileged (Free Filing) — add note..." : "Add note..."}
                       defaultValue={filing.notes || ""}
                       onBlur={(e) => {
-                        if (e.target.value !== filing.notes) {
+                        if (e.target.value !== (filing.notes || "")) {
                           updateFiling(filing.id, { notes: e.target.value });
                         }
                       }}

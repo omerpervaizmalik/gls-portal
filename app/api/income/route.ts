@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getNextInvoiceNumber } from "@/lib/invoices";
-import { isIncomeTaxFilingText, syncFilingBilled, syncFilingPayment } from "@/lib/tax-filing-sync";
+import { isIncomeTaxFilingText, isFbrChallanText, syncFilingBilled, syncFilingPayment } from "@/lib/tax-filing-sync";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -67,13 +67,15 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // Sync Tax Filing Record: an Income Tax filing receipt bills the filing (if not
+      // Sync Tax Filing Record: an Income Tax filing or FBR Challan receipt bills the filing (if not
       // already billed by an invoice) and then the payment marks it Paid / pending.
-      if (isIncomeTaxFilingText(serviceType)) {
+      const isChallan = isFbrChallanText(serviceType) || isFbrChallanText(description);
+      if (isIncomeTaxFilingText(serviceType) || isChallan) {
         await syncFilingBilled(clientId, numericAmount, {
           invoiceNo,
           userName: session.user?.name,
-          onlyIfNotBilled: true
+          onlyIfNotBilled: true,
+          challanAmount: isChallan ? numericAmount : undefined
         });
       }
       await syncFilingPayment(clientId, numericAmount, { userName: session.user?.name });

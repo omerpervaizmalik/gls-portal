@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { getIncomeTaxBillAmount, syncFilingBilled } from "@/lib/tax-filing-sync";
+import { getIncomeTaxBillAmount, getFbrChallanAmount, syncFilingBilled } from "@/lib/tax-filing-sync";
 
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -57,13 +57,15 @@ export async function PUT(req: NextRequest) {
     revalidatePath(`/fams/ledger/${existingInvoice.clientId}`);
     revalidatePath("/fams/invoice");
 
-    // Keep Tax Filing Record bill amount in sync when an Income Tax invoice is edited
+    // Keep Tax Filing Record bill amount in sync when an Income Tax / Challan invoice is edited
     const oldTaxAmount = getIncomeTaxBillAmount(existingInvoice.items, existingInvoice.totalAmount);
     const newTaxAmount = getIncomeTaxBillAmount(updatedInvoice.items, updatedInvoice.totalAmount);
+    const challanAmt = getFbrChallanAmount(updatedInvoice.items);
     if (newTaxAmount > 0 || oldTaxAmount > 0) {
       await syncFilingBilled(existingInvoice.clientId, newTaxAmount - oldTaxAmount, {
         invoiceNo: existingInvoice.invoiceNo,
-        userName: session.user?.name
+        userName: session.user?.name,
+        challanAmount: challanAmt > 0 ? challanAmt : undefined
       });
     }
 

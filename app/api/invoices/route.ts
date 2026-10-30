@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getNextInvoiceNumber } from "@/lib/invoices";
-import { getIncomeTaxBillAmount, syncFilingBilled } from "@/lib/tax-filing-sync";
+import { getIncomeTaxBillAmount, getFbrChallanAmount, syncFilingBilled } from "@/lib/tax-filing-sync";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -66,12 +66,14 @@ export async function POST(req: NextRequest) {
           }
         });
 
-        // Sync Tax Filing Record (Billed) if this invoice is for Income Tax filing
+        // Sync Tax Filing Record (Billed) if this invoice is for Income Tax filing or FBR Challan
         const newTaxAmount = getIncomeTaxBillAmount(items, parsedTotal);
+        const challanAmt = getFbrChallanAmount(items);
         if (newTaxAmount > 0 || oldTaxAmount > 0) {
           await syncFilingBilled(clientId, newTaxAmount - oldTaxAmount, {
             invoiceNo: existingInvoiceForLedger.invoiceNo,
-            userName: session.user?.name
+            userName: session.user?.name,
+            challanAmount: challanAmt > 0 ? challanAmt : undefined
           });
         }
 
@@ -122,12 +124,14 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // Auto-mark Tax Filing Record as Billed for Income Tax filing invoices
+    // Auto-mark Tax Filing Record as Billed for Income Tax filing / FBR Challan invoices
     const taxBillAmount = getIncomeTaxBillAmount(items, parsedTotal);
+    const challanAmt = getFbrChallanAmount(items);
     if (taxBillAmount > 0) {
       await syncFilingBilled(clientId, taxBillAmount, {
         invoiceNo: invoice.invoiceNo,
-        userName: session.user?.name
+        userName: session.user?.name,
+        challanAmount: challanAmt > 0 ? challanAmt : undefined
       });
     }
 

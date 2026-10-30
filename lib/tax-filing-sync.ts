@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
  */
 
 const PENDING_NOTE_REGEX = /\s*\|?\s*Pending Payment:\s*Rs\.?\s*[\d,]+(\.\d+)?/gi;
+const CHALLAN_NOTE_REGEX = /\s*\|?\s*FBR Challan(?: Paid)?:\s*Rs\.?\s*[\d,]+(\.\d+)?/gi;
 
 /** True when a service/item description refers to an income tax return filing. */
 export function isIncomeTaxFilingText(text?: string | null): boolean {
@@ -15,14 +16,30 @@ export function isIncomeTaxFilingText(text?: string | null): boolean {
   return /income\s*tax/i.test(text) && /(fil|return)/i.test(text);
 }
 
+/** True when a service/item description refers to an FBR Challan / Tax Dues. */
+export function isFbrChallanText(text?: string | null): boolean {
+  if (!text) return false;
+  return /\bchallan\b/i.test(text) || (/fbr/i.test(text) && /\b(dues|tax|payment|paid)\b/i.test(text));
+}
+
+/** Sum of invoice line items that are for an FBR Challan. */
+export function getFbrChallanAmount(items: any): number {
+  if (!Array.isArray(items) || items.length === 0) return 0;
+  return items
+    .filter((i: any) => isFbrChallanText(i?.description))
+    .reduce((sum: number, i: any) => sum + (Number(i?.amount) || 0), 0);
+}
+
 /**
- * If ANY invoice line item is for Income Tax filing, the complete invoice total
+ * If ANY invoice line item is for Income Tax filing or FBR Challan, the complete invoice total
  * (after discount) is counted as the Tax Filing bill amount. Otherwise returns 0.
  */
 export function getIncomeTaxBillAmount(items: any, totalAmount: number): number {
   if (!Array.isArray(items) || items.length === 0) return 0;
-  const hasIncomeTaxLine = items.some((i: any) => isIncomeTaxFilingText(i?.description));
-  if (!hasIncomeTaxLine) return 0;
+  const hasRelevantLine = items.some(
+    (i: any) => isIncomeTaxFilingText(i?.description) || isFbrChallanText(i?.description)
+  );
+  if (!hasRelevantLine) return 0;
   return Math.max(0, Number(totalAmount) || 0);
 }
 
@@ -30,11 +47,38 @@ function formatRs(n: number) {
   return `Rs. ${Math.round(n).toLocaleString("en-US")}`;
 }
 
-function buildNotes(existing: string | null | undefined, pending: number): string {
-  const base = (existing || "").replace(PENDING_NOTE_REGEX, "").trim();
-  if (pending <= 0) return base;
-  const tag = `Pending Payment: ${formatRs(pending)}`;
-  return base ? `${base} | ${tag}` : tag;
+function buildNotes(
+  existing: string | null | undefined,
+  pending: number,
+  challanOpts?: { challanAmount?: number; isPaid?: boolean }
+): string {
+  let base = (existing || "").replace(PENDING_NOTE_REGEX, "").trim();
+
+  // Extract existing challan info if present so we preserve it on payment updates
+  const existingChallanMatch = base.match(/FBR Challan(?: Paid)?:\s*Rs\.?\s*([\d,]+(?:\.\d+)?)/i);
+  const existingChallanAmt = existingChallanMatch
+    ? parseFloat(existingChallanMatch[1].replace(/,/g, ""))
+    : 0;
+
+  const finalChallanAmt =
+    challanOpts?.challanAmount !== undefined ? challanOpts.challanAmount : existingChallanAmt;
+  const isChallanPaid = challanOpts?.isPaid ?? /FBR Challan Paid:/i.test(base);
+
+  base = base.replace(CHALLAN_NOTE_REGEX, "").trim();
+
+  const parts: string[] = [];
+  if (base) parts.push(base);
+  if (finalChallanAmt > 0) {
+    parts.push(
+      isChallanPaid && pending <= 0
+        ? `FBR Challan Paid: ${formatRs(finalChallanAmt)}`
+        : `FBR Challan: ${formatRs(finalChallanAmt)}`
+    );
+  }
+  if (pending > 0) {
+    parts.push(`Pending Payment: ${formatRs(pending)}`);
+  }
+  return parts.join(" | ");
 }
 
 async function addLog(filingId: string, note: string, stage: string, userName?: string | null) {
@@ -62,7 +106,7 @@ async function getLatestFiling(clientId: string) {
 export async function syncFilingBilled(
   clientId: string | null | undefined,
   amountDelta: number,
-  opts: { invoiceNo?: string; userName?: string | null; onlyIfNotBilled?: boolean } = {}
+  opts: { invoiceNo?: string; userName?: string | null; onlyIfNotBilled?: boolean; challanAmount?: number } = {}
 ) {
   if (!clientId) return;
   try {
@@ -78,7 +122,10 @@ export async function syncFilingBilled(
       data: {
         isBilled: true,
         billAmount,
-        notes: filing.isPaid ? buildNotes(filing.notes, pending) : filing.notes
+        notes: buildNotes(filing.notes, pending, {
+          challanAmount: opts.challanAmount,
+          isPaid: filing.isPaid && pending <= 0
+        })
       }
     });
 
@@ -126,7 +173,7 @@ export async function syncFilingPayment(
       data: {
         isPaid: true,
         paymentAmount,
-        notes: buildNotes(filing.notes, pending)
+        notes: buildNotes(filing.notes, pending, { isPaid: pending <= 0 })
       }
     });
 

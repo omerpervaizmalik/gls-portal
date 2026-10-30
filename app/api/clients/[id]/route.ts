@@ -13,10 +13,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
     
     // Manually fetch extra fields
-    const extras = await prisma.$queryRaw`SELECT description, category FROM "Client" WHERE id = ${params.id}`;
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "isPrivileged" BOOLEAN NOT NULL DEFAULT false;`).catch(() => {});
+    const extras = await prisma.$queryRaw`SELECT description, category, "isPrivileged" FROM "Client" WHERE id = ${params.id}`;
     if (extras && (extras as any[]).length > 0) {
       client.description = (extras as any)[0].description;
       client.category = (extras as any)[0].category;
+      (client as any).isPrivileged = !!(extras as any)[0].isPrivileged;
     }
 
     return NextResponse.json(client);
@@ -32,7 +34,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const { 
       cfNo, name, cnic, email, irisPassword, mobileNo, 
       address, city, ntn, strn, businessName, profileImage, description, category, entryDate,
-      reference, status, filings, clientType
+      reference, status, filings, clientType, isPrivileged
     } = body;
 
     const client = await prisma.client.update({
@@ -64,6 +66,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (category !== undefined) {
       await prisma.$executeRaw`UPDATE "Client" SET category = ${category} WHERE id = ${params.id}`;
     }
+    if (isPrivileged !== undefined) {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "isPrivileged" BOOLEAN NOT NULL DEFAULT false;`).catch(() => {});
+      await prisma.$executeRaw`UPDATE "Client" SET "isPrivileged" = ${!!isPrivileged} WHERE id = ${params.id}`;
+    }
 
     // UPDATE "Filing"s if provided
     if (filings && Array.isArray(filings)) {
@@ -92,10 +98,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     });
 
     if (updated) {
-      const extras = await prisma.$queryRaw`SELECT description, category FROM "Client" WHERE id = ${params.id}`;
+      const extras = await prisma.$queryRaw`SELECT description, category, "isPrivileged" FROM "Client" WHERE id = ${params.id}`;
       if (extras && (extras as any[]).length > 0) {
         (updated as any).description = (extras as any)[0].description;
         (updated as any).category = (extras as any)[0].category;
+        (updated as any).isPrivileged = !!(extras as any)[0].isPrivileged;
       }
     }
 

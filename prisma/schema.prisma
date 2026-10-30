@@ -61,6 +61,7 @@ model Client {
   reference     String?
   status        String         @default("ACTIVE")
   clientType    String         @default("TAX")  // "TAX" or "LEGAL"
+  isPrivileged  Boolean        @default(false)
   entryDate     DateTime       @default(now())
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt

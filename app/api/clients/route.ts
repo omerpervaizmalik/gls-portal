@@ -28,6 +28,9 @@ export async function GET(req: NextRequest) {
       where.AND.push({ status: status });
     }
 
+    // 1.5 Ensure isPrivileged column exists safely
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "isPrivileged" BOOLEAN NOT NULL DEFAULT false;`).catch(() => {});
+
     // 2. Fetch clients with filings included
     const clients = await prisma.client.findMany({
       where,
@@ -37,6 +40,13 @@ export async function GET(req: NextRequest) {
         }
       }
     });
+
+    // Attach isPrivileged from raw SQL in case Prisma Client is pre-generated
+    const privRows = await prisma.$queryRawUnsafe<{ id: string; isPrivileged: boolean }[]>(`SELECT id, "isPrivileged" FROM "Client"`).catch(() => []);
+    const privMap = new Map(privRows.map(r => [r.id, !!r.isPrivileged]));
+    for (const c of clients as any[]) {
+      c.isPrivileged = privMap.get(c.id) ?? !!c.isPrivileged;
+    }
 
     // 3. Sort manually by cfNo safely (supports both numeric and alphanumeric like L-1)
     const sortedClients = clients.sort((a, b) => {
@@ -63,7 +73,7 @@ export async function POST(req: NextRequest) {
     const { 
       cfNo, name, cnic, email, irisPassword, mobileNo, 
       address, city, ntn, strn, businessName, profileImage, description, category, entryDate,
-      reference, status, filings, clientType = "TAX"
+      reference, status, filings, clientType = "TAX", isPrivileged = false
     } = body;
 
     let finalCfNo = cfNo;
@@ -159,6 +169,12 @@ export async function POST(req: NextRequest) {
       },
       include: { filings: true },
     });
+
+    if (isPrivileged !== undefined) {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "isPrivileged" BOOLEAN NOT NULL DEFAULT false;`).catch(() => {});
+      await prisma.$executeRaw`UPDATE "Client" SET "isPrivileged" = ${!!isPrivileged} WHERE id = ${client.id}`.catch(() => {});
+      (client as any).isPrivileged = !!isPrivileged;
+    }
 
     return NextResponse.json(client, { status: 201 });
   } catch (e: any) {

@@ -269,6 +269,7 @@ export function EntryActions({ entry, clientId }: { entry: any, clientId: string
                   <option value="">-- Or select a standard service template --</option>
                   <optgroup label="Taxation Services (FBR)">
                     <option value="Income Tax Return Filing">Income Tax Return Filing</option>
+                    <option value="FBR Tax Challan / Dues Payment">FBR Tax Challan / Dues Payment</option>
                     <option value="NTN Registration (Individual/AOP/Company)">NTN Registration (Individual/AOP/Company)</option>
                     <option value="Sales Tax Registration (GST/PST)">Sales Tax Registration (GST/PST)</option>
                     <option value="Monthly Sales Tax Return Filing">Monthly Sales Tax Return Filing</option>

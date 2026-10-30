@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "isPrivileged" BOOLEAN NOT NULL DEFAULT false;`).catch(() => {});
+
     const filings = await prisma.filing.findMany({
       where: { year: parseInt(year) },
       include: {
@@ -32,6 +34,14 @@ export async function GET(req: NextRequest) {
         }
       }
     });
+
+    const privRows = await prisma.$queryRawUnsafe<{ id: string; isPrivileged: boolean }[]>(`SELECT id, "isPrivileged" FROM "Client"`).catch(() => []);
+    const privMap = new Map(privRows.map(r => [r.id, !!r.isPrivileged]));
+    for (const f of filings as any[]) {
+      if (f.client) {
+        f.client.isPrivileged = privMap.get(f.client.id) ?? false;
+      }
+    }
     
     const sortedFilings = filings.sort((a, b) => {
       const aRaw = a.client?.cfNo || "0";

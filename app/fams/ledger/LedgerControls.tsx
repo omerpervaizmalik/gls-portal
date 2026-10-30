@@ -320,6 +320,7 @@ GLS Management`;
                   <optgroup label="Taxation Services (FBR)">
                     <option value="NTN Registration Fee (Individual, AOP, or Company)">NTN Registration Fee (Individual, AOP, or Company)</option>
                     <option value="Income Tax Return Filing Fee (Annual)">Income Tax Return Filing Fee (Annual)</option>
+                    <option value="FBR Tax Challan / Dues Payment">FBR Tax Challan / Dues Payment</option>
                     <option value="Sales Tax Registration Fee (GST/PST)">Sales Tax Registration Fee (GST/PST)</option>
                     <option value="Monthly Sales Tax Filing Fee (Federal or Provincial)">Monthly Sales Tax Filing Fee (Federal or Provincial)</option>
                     <option value="Withholding Tax Statement Filing Fee">Withholding Tax Statement Filing Fee</option>

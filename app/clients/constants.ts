@@ -38,6 +38,7 @@ export const SERVICE_CATEGORY_GROUPS: Record<string, string[]> = {
     "NTN Registration (Individual)",
     "NTN Registration (AOP / Company)",
     "Income Tax Return Filing",
+    "FBR Tax Challan / Dues Payment",
     "Withholding Tax Statement",
     "Tax Audit Representation",
     "Tax Appeal & Litigation",

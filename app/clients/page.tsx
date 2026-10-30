@@ -5,7 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import {
   Search, UserPlus, X, Trash2, ChevronLeft, ChevronRight,
   Loader2, Check, RefreshCw, Pencil, FolderOpen, Camera, Upload, 
-  BookOpen, Folder, Menu
+  BookOpen, Folder, Menu, Crown
 } from "lucide-react";
 import { Cell } from "./Cell";
 import { InfoRow } from "./InfoRow";
@@ -33,6 +33,7 @@ interface Client {
   status: string;
   entryDate?: string;
   clientType?: "TAX" | "LEGAL";
+  isPrivileged?: boolean;
 }
 
 type EditRow = Omit<Client, "id">;
@@ -45,7 +46,7 @@ function AddClientModal({ onClose, onSave }: { onClose: () => void; onSave: () =
     cfNo: "", name: "", cnic: "", email: "",
     irisPassword: "", mobileNo: "", reference: "", status: "ACTIVE",
     address: "", city: "", ntn: "", strn: "", businessName: "", profileImage: "",
-    description: "", category: "", clientType: "TAX",
+    description: "", category: "", clientType: "TAX", isPrivileged: false,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
@@ -180,6 +181,19 @@ function AddClientModal({ onClose, onSave }: { onClose: () => void; onSave: () =
               >
                 {STATUS_OPTIONS.map(s => <option key={s}>{s}</option>)}
               </select>
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center space-x-2.5 cursor-pointer bg-amber-50/70 hover:bg-amber-50 border border-amber-200 rounded-lg px-3.5 py-2 w-full transition-colors">
+                <input
+                  type="checkbox"
+                  checked={!!form.isPrivileged}
+                  onChange={e => setForm(f => ({ ...f, isPrivileged: e.target.checked }))}
+                  className="rounded text-amber-500 focus:ring-amber-400 w-4 h-4"
+                />
+                <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                  <Crown size={14} className="text-amber-500" /> Privileged Client (Free Filing)
+                </span>
+              </label>
             </div>
           </div>
         </div>
@@ -320,11 +334,16 @@ function ClientDetailModal({ client, onClose, onRefresh }: { client: Client; onC
               />
             </div>
             <div className="flex-1">
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3 flex-wrap gap-y-1">
                 <h2 className="text-2xl font-black text-white leading-tight">{form.name}</h2>
                 <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-sm ${statusColorLocal(form.status)}`}>
                   {form.status}
                 </span>
+                {form.isPrivileged && (
+                  <span className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-sm bg-yellow-300 text-amber-950 flex items-center gap-1">
+                    <Crown size={11} /> Privileged
+                  </span>
+                )}
               </div>
               <p className="text-amber-50/80 font-mono text-sm mt-1">CF Account: #{form.cfNo}</p>
               <div className="flex items-center space-x-4 mt-3">
@@ -450,6 +469,29 @@ function ClientDetailModal({ client, onClose, onRefresh }: { client: Client; onC
                   <InfoRow label="IRIS Password" value={form.irisPassword} field="irisPassword" editing={editing} onChange={handleChange} />
                   <InfoRow label="Reference / Referrer" value={form.reference} field="reference" editing={editing} onChange={handleChange} />
                   <InfoRow label="Client Status" value={form.status} field="status" editing={editing} onChange={handleChange} />
+                  <div className="pt-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Privileged Status</span>
+                    {editing ? (
+                      <label className="flex items-center space-x-2.5 cursor-pointer bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5">
+                        <input
+                          type="checkbox"
+                          checked={!!form.isPrivileged}
+                          onChange={e => setForm(prev => ({ ...prev, isPrivileged: e.target.checked }))}
+                          className="rounded text-amber-500 focus:ring-amber-400 w-4 h-4"
+                        />
+                        <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                          <Crown size={14} className="text-amber-500" /> Privileged Client (Free Filing)
+                        </span>
+                      </label>
+                    ) : (
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold ${
+                        form.isPrivileged ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-slate-100 text-slate-500"
+                      }`}>
+                        <Crown size={13} className={form.isPrivileged ? "text-amber-500" : "text-slate-400"} />
+                        {form.isPrivileged ? "Privileged (Free Filing)" : "Standard Client"}
+                      </span>
+                    )}
+                  </div>
                   <div className="pt-4 border-t border-slate-50">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Registration Date</span>
                     <span className="text-sm font-mono text-slate-600">
@@ -599,6 +641,7 @@ export default function ClientsPage() {
     if (typeFilter === 'ALL') return true;
     if (typeFilter === 'TAX') return c.clientType === 'TAX' || !c.clientType;
     if (typeFilter === 'LEGAL') return c.clientType === 'LEGAL';
+    if (typeFilter === 'PRIVILEGED') return !!c.isPrivileged;
     return true;
   });
 
@@ -630,10 +673,13 @@ export default function ClientsPage() {
 
         {/* Search & Filter */}
         <div className="px-8 py-4 bg-white border-b border-slate-100 shrink-0 flex flex-col space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button onClick={() => setTypeFilter('ALL')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${typeFilter === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>All Clients</button>
             <button onClick={() => setTypeFilter('TAX')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${typeFilter === 'TAX' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>Tax Clients</button>
             <button onClick={() => setTypeFilter('LEGAL')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${typeFilter === 'LEGAL' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>Legal Clients</button>
+            <button onClick={() => setTypeFilter('PRIVILEGED')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all flex items-center gap-1.5 ${typeFilter === 'PRIVILEGED' ? 'bg-amber-500 text-white shadow-sm' : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'}`}>
+              <Crown size={14} /> Privileged Clients
+            </button>
           </div>
           <div className="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
             <div className="relative flex-1 max-w-lg">
@@ -706,12 +752,17 @@ export default function ClientsPage() {
                           ) : col.key === "status" ? (
                             <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm ${statusColor(client.status)}`}>{client.status}</span>
                           ) : col.key === "name" ? (
-                            <div className="flex items-center">
+                            <div className="flex items-center flex-wrap gap-1.5">
                               <span className="text-sm font-bold text-slate-800 group-hover:text-amber-600 transition-all">
                                 {client.name}
                               </span>
                               {client.clientType === 'LEGAL' && (
-                                <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] rounded-full uppercase tracking-widest font-bold">Legal</span>
+                                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] rounded-full uppercase tracking-widest font-bold">Legal</span>
+                              )}
+                              {client.isPrivileged && (
+                                <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 text-[10px] rounded-full uppercase tracking-wider font-bold inline-flex items-center gap-1" title="Privileged Client (Free Filing)">
+                                  <Crown size={10} className="text-amber-600" /> Privileged
+                                </span>
                               )}
                             </div>
                           ) : col.key === "irisPassword" ? (
